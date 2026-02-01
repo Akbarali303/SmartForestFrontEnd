@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <style>
     #intro-overlay{
       position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -103,7 +104,7 @@
     .land-popup-btn.active{background:#e5e7eb;color:#374151;cursor:default}
     .land-parcel-tooltip.leaflet-tooltip{font-family:'Source Sans 3',system-ui,sans-serif;font-size:12px;font-weight:600;color:#0f766e;background:rgba(255,255,255,.97);border:1px solid rgba(15,118,110,.4);border-radius:6px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.1);white-space:nowrap}
     path.land-parcel-path{transition:fill-opacity .35s ease,stroke .3s ease,stroke-width .25s ease,filter .25s ease,opacity .4s ease;animation:landParcelFadeIn .5s ease forwards;stroke-linejoin:round;stroke-linecap:round;pointer-events:auto}
-    path.land-parcel-path.forest-contour{pointer-events:none}
+    path.land-parcel-path.forest-contour{pointer-events:auto}
     @keyframes landParcelFadeIn{0%{opacity:0}100%{opacity:1}}
     path.land-parcel-path.selected{filter:drop-shadow(0 0 10px rgba(34,197,94,.55))}
     path.land-parcel-path.selected.available-selected{filter:drop-shadow(0 0 10px rgba(234,88,12,.5))}
@@ -562,6 +563,46 @@
     #error-boundary .error-msg{font-size:12px;color:rgba(255,255,255,.5);max-width:420px;text-align:center;line-height:1.5}
     #error-boundary .error-dismiss{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:10px 24px;border-radius:6px;cursor:pointer;font:11px 'JetBrains Mono',monospace;letter-spacing:.1em}
     #error-boundary .error-dismiss:hover{background:rgba(255,255,255,.15)}
+
+    #add-forest-btn{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;align-items:center;gap:8px;align-items:center;gap:8px;padding:10px 18px;background:#166534;color:#fff;border:none;border-radius:8px;font:13px 'Source Sans 3',system-ui,sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.15);transition:background .2s,transform .2s}
+    #add-forest-btn:hover{background:#14532d;transform:translateX(-50%) translateY(-1px)}
+    #add-forest-btn:disabled{background:#9ca3af;cursor:not-allowed;transform:translateX(-50%)}
+    body.command-mode #add-forest-btn{display:none !important}
+    .forest-context-menu{position:fixed;z-index:10001;min-width:240px;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);overflow:hidden;font-family:'Source Sans 3',system-ui,sans-serif;display:none}
+    .forest-context-menu.visible{display:block}
+    body.dark .forest-context-menu,body.intel .forest-context-menu{background:rgba(18,22,26,.98);border:1px solid rgba(255,255,255,.1)}
+    .forest-context-menu .ctx-btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:#166534;text-align:left;transition:background .15s}
+    .forest-context-menu .ctx-btn:hover{background:rgba(22,101,52,.1)}
+    .forest-context-menu .ctx-btn.danger{color:#b91c1c}
+    .forest-context-menu .ctx-btn.danger:hover{background:rgba(185,28,28,.1)}
+    .forest-context-menu .ctx-divider{border-top:1px solid rgba(0,0,0,.08);margin:0}
+    body.dark .forest-context-menu .ctx-divider,body.intel .forest-context-menu .ctx-divider{border-color:rgba(255,255,255,.1)}
+    .forest-context-menu .ctx-info{padding:12px 16px;font-size:12px;color:#6b7280;line-height:1.5;background:rgba(0,0,0,.03)}
+    body.dark .forest-context-menu .ctx-info,body.intel .forest-context-menu .ctx-info{background:rgba(255,255,255,.05);color:rgba(255,255,255,.6)}
+    .forest-context-menu .ctx-info strong{color:#1a1f22}
+    body.dark .forest-context-menu .ctx-info strong,body.intel .forest-context-menu .ctx-info strong{color:#fff}
+    .draw-mask-overlay{pointer-events:auto;cursor:not-allowed}
+    .add-lease-modal{display:none;position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+    .add-lease-modal.visible{display:flex}
+    .add-lease-dialog{width:min(420px,94vw);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;font-family:'Source Sans 3',system-ui,sans-serif}
+    body.dark .add-lease-dialog,body.intel .add-lease-dialog{background:rgba(18,22,26,.98)}
+    .add-lease-header{padding:16px 20px;background:linear-gradient(135deg,#166534 0%,#14532d 100%);color:#fff;font-weight:700;font-size:16px}
+    .add-lease-body{padding:20px;display:flex;flex-direction:column;gap:14px}
+    .add-lease-field label{display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px}
+    .add-lease-field input,.add-lease-field select{width:100%;padding:10px 12px;border:1px solid rgba(0,0,0,.15);border-radius:6px;font-size:14px}
+    body.dark .add-lease-field input,body.dark .add-lease-field select,body.intel .add-lease-field input,body.intel .add-lease-field select{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff}
+    .add-lease-footer{display:flex;gap:10px;padding:16px 20px;border-top:1px solid rgba(0,0,0,.08)}
+    body.dark .add-lease-footer,body.intel .add-lease-footer{border-top-color:rgba(255,255,255,.08)}
+    .add-lease-btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s}
+    .add-lease-btn.primary{background:#166534;color:#fff}
+    .add-lease-btn.primary:hover{background:#14532d}
+    .add-lease-btn.secondary{background:#e5e7eb;color:#374151}
+    .add-lease-btn.secondary:hover{background:#d1d5db}
+    body.dark .add-lease-btn.secondary,body.intel .add-lease-btn.secondary{background:rgba(255,255,255,.1);color:#e5e7eb}
+    body.dark .add-lease-btn.secondary:hover,body.intel .add-lease-btn.secondary:hover{background:rgba(255,255,255,.15)}
+    .add-lease-btn:disabled{opacity:.6;cursor:not-allowed}
+    .leaflet-draw-toolbar a{background-image:url('https://unpkg.com/leaflet-draw@1.0.4/dist/images/spritesheet.png')!important}
+    .draw-area-tooltip{font-family:'Source Sans 3',system-ui,sans-serif;font-size:13px;font-weight:600;color:#166534;background:rgba(255,255,255,.97);border:1px solid rgba(22,101,52,.4);border-radius:6px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,.1);white-space:nowrap}
   </style>
 </head>
 <body>
@@ -668,6 +709,10 @@
           </div>
         </div>
       </div>
+      <button type="button" id="add-forest-btn" title="O'rmon hududini xaritada belgilash">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        O'rmon hududini qo'shish
+      </button>
       <div id="map"></div>
       <div id="map-skeleton">
         <div class="skeleton-dots skeleton-pulse"><span class="skeleton-dot"></span><span class="skeleton-dot"></span><span class="skeleton-dot"></span></div>
@@ -712,6 +757,77 @@
     <div class="stats-row"><span>Yong'inlar</span><span>0</span></div>
     <div class="stats-row"><span>Noqonuniy daraxt kesish</span><span>0</span></div>
     <div class="stats-hint">Filterni tozalash uchun viloyatni qayta bosing</div>
+  </div>
+  <div id="forest-context-menu" class="forest-context-menu">
+    <button type="button" class="ctx-btn" data-action="add-lease"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ijara hududi qo'shish</button>
+    <button type="button" class="ctx-btn danger" data-action="delete-forest"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>O'rmonni o'chirish</button>
+    <hr class="ctx-divider">
+    <div class="ctx-info" id="forest-ctx-info">—</div>
+  </div>
+  <div class="add-lease-modal" id="add-forest-modal">
+    <div class="add-lease-dialog">
+      <div class="add-lease-header">O'rmon hududini saqlash</div>
+      <form id="add-forest-form" class="add-lease-body">
+        <div class="add-lease-field">
+          <label for="forest-name">O'rmon nomi (ixtiyoriy)</label>
+          <input type="text" id="forest-name" placeholder="Misol: Chatkal o'rmoni" maxlength="255">
+        </div>
+      </form>
+      <div class="add-lease-footer">
+        <button type="button" class="add-lease-btn secondary" id="add-forest-cancel">Bekor qilish</button>
+        <button type="submit" form="add-forest-form" class="add-lease-btn primary" id="add-forest-save">Saqlash</button>
+      </div>
+    </div>
+  </div>
+  <div class="add-lease-modal" id="add-lease-modal">
+    <div class="add-lease-dialog">
+      <div class="add-lease-header">Ijara hududini saqlash</div>
+      <form id="add-lease-form" class="add-lease-body">
+        <div class="add-lease-field">
+          <label for="lease-name">Maydon nomi *</label>
+          <input type="text" id="lease-name" required placeholder="Misol: Chatkal Ijara 2" maxlength="255">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-region">Viloyat *</label>
+          <select id="lease-region" required>
+            <option value="">Tanlang</option>
+            <option value="Tashkent">Toshkent</option>
+            <option value="Samarkand">Samarqand</option>
+            <option value="Fergana">Farg'ona</option>
+            <option value="Bukhara">Buxoro</option>
+            <option value="Surxondaryo">Surxondaryo</option>
+            <option value="Karakalpakstan">Qoraqalpog'iston</option>
+            <option value="Navoiy">Navoiy</option>
+            <option value="Qashqadaryo">Qashqadaryo</option>
+            <option value="Jizzakh">Jizzax</option>
+            <option value="Andijan">Andijon</option>
+            <option value="Namangan">Namangan</option>
+            <option value="Sirdaryo">Sirdaryo</option>
+            <option value="Khorezm">Xorazm</option>
+          </select>
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-holder">Ijarachi</label>
+          <input type="text" id="lease-holder" placeholder="Tashkilot nomi" maxlength="255">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-contract">Shartnoma raqami</label>
+          <input type="text" id="lease-contract" placeholder="IJ-2024/001" maxlength="100">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-start">Shartnoma boshlanish sanasi</label>
+          <input type="date" id="lease-start">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-expiry">Shartnoma tugash sanasi</label>
+          <input type="date" id="lease-expiry">
+        </div>
+      </form>
+      <div class="add-lease-footer">
+        <button type="button" class="add-lease-btn secondary" id="add-lease-cancel">Bekor qilish</button>
+        <button type="submit" form="add-lease-form" class="add-lease-btn primary" id="add-lease-save">Saqlash</button>
+      </div>
+    </div>
   </div>
   <div id="map-mode-switcher" class="map-mode-switcher">
     <button type="button" class="mode-btn active" data-mode="national">MILLIY KO'RINISH</button>
@@ -760,6 +876,7 @@
     })();
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
@@ -858,7 +975,7 @@
     if (!map.getPane('forestPane')) {
       map.createPane('forestPane');
       map.getPane('forestPane').style.zIndex = 310;
-      map.getPane('forestPane').style.pointerEvents = 'none';
+      map.getPane('forestPane').style.pointerEvents = 'auto';
     }
     if (!map.getPane('landParcelsPane')) {
       map.createPane('landParcelsPane');
@@ -1275,17 +1392,32 @@
       }
     }
     const FOREST_ZONES_URL = '/public/geo/forest_zones_demo.json';
+    const FOREST_AREAS_API = '/api/v1/forest-areas';
     function loadForestZones(){
-      return fetch(FOREST_ZONES_URL).then(r=>r.ok?r.json():Promise.reject()).then(geojson=>{
-        const features = (geojson.features || []).map(f=> makeIrregularPolygon({...f, properties: {...(f.properties||{}), type: 'forest_demo'}}));
-        return features.length ? { type:'FeatureCollection', features } : null;
-      }).catch(()=>null);
+      return fetch(FOREST_AREAS_API).then(r=>r.ok?r.json():null).catch(()=>null).then(apiForest=>{
+        return fetch(FOREST_ZONES_URL).then(r=>r.ok?r.json():null).catch(()=>null).then(demo=>{
+          const demoFeats = (demo?.features || []).map(f=> makeIrregularPolygon({...f, properties: {...(f.properties||{}), type: 'forest_demo'}}));
+          const apiFeats = (apiForest?.features || []).map(f=> ({...f, properties: {...(f.properties||{}), type: 'forest_user'}}));
+          const all = [...demoFeats, ...apiFeats];
+          return all.length ? { type:'FeatureCollection', features: all } : null;
+        });
+      });
     }
     const UZ_REGIONS_URL = '/public/geo/uzbekistan_regions.geojson';
+    const LAND_PARCELS_API = '/api/v1/land-parcels';
+    const LAND_PARCELS_STATIC = '/public/geo/land_parcels.json';
     function loadLandParcels(){
       Promise.all([
         loadForestZones(),
-        fetch('/public/geo/land_parcels.json').then(r=>r.ok?r.json():Promise.reject()),
+        fetch(LAND_PARCELS_API).then(r=>r.ok?r.json():null).catch(()=>null).then(api=>{
+          return fetch(LAND_PARCELS_STATIC).then(r=>r.ok?r.json():null).catch(()=>null).then(static=>{
+            const apiFeats = api?.features || [];
+            const staticFeats = static?.features || [];
+            const staticIds = new Set(staticFeats.map(f=> (f.properties||{}).id));
+            const extraApi = apiFeats.filter(f=> !staticIds.has((f.properties||{}).id));
+            return { type:'FeatureCollection', features: [...staticFeats, ...extraApi] };
+          });
+        }),
         fetch(UZ_REGIONS_URL).then(r=>r.ok?r.json():Promise.resolve(null)).catch(()=>null)
       ]).then(([forestZones, geojson, regionsGeo])=>{
         landParcelsGeoJson = geojson;
@@ -1324,9 +1456,44 @@
         if (forestContourLayer) { map.removeLayer(forestContourLayer); forestContourLayer = null; }
         if (leaseAreasLayer) { map.removeLayer(leaseAreasLayer); leaseAreasLayer = null; }
         if (availableLandsLayer) { map.removeLayer(availableLandsLayer); availableLandsLayer = null; }
-        forestContourLayer = forestGeo ? L.geoJSON(forestGeo, { style: forestStyle }) : L.layerGroup();
+        forestContourLayer = forestGeo ? L.geoJSON(forestGeo, { style: forestStyle, onEachFeature: setupForestLayer }) : L.layerGroup();
         forestContourLayer.eachLayer(function(l){ l.on('add', function(){ const el = l.getElement?.(); if (el) el.classList.add('land-parcel-path','forest-contour'); }); });
         forestContourLayer.bringToBack();
+        function setupForestLayer(feature, layer){
+          layer._feature = feature;
+          layer._forestGeom = feature.geometry;
+          const props = feature.properties || {};
+          const isUserForest = props.type === 'forest_user' && props.id != null;
+          layer.on('add', function(){ const el = layer.getElement?.(); if (el) { el.style.pointerEvents = 'auto'; el.style.cursor = 'pointer'; } });
+          layer.on('click', function(e){
+            if (e) L.DomEvent.stopPropagation(e);
+            const menu = document.getElementById('forest-context-menu');
+            if (!menu) return;
+            const rect = map.getContainer().getBoundingClientRect();
+            const x = rect.left + (e.containerPoint?.x ?? 0), y = rect.top + (e.containerPoint?.y ?? 0);
+            menu.style.left = (x + 8) + 'px';
+            menu.style.top = (y + 8) + 'px';
+            const infoEl = document.getElementById('forest-ctx-info');
+            let areaHa = '—';
+            if (typeof turf !== 'undefined' && feature.geometry) {
+              try { areaHa = (turf.area(turf.feature(feature.geometry)) / 10000).toFixed(1) + ' ga'; } catch(_){}
+            }
+            const leaseCount = forestFeat && leaseExclusive.length ? leaseExclusive.filter(lf=>{
+              try { return turf.booleanIntersects(turf.feature(lf.geometry), turf.feature(feature.geometry)); } catch(_){ return false; }
+            }).length : 0;
+            const name = props.name || (props.id ? 'O\'rmon ' + props.id : 'O\'rmon hududi');
+            if (infoEl) infoEl.innerHTML = '<strong>' + (name.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</strong><br>Maydon: ' + areaHa + '<br>Ijara maydonlari: ' + leaseCount;
+            const delBtn = menu.querySelector('[data-action="delete-forest"]');
+            if (delBtn) delBtn.style.display = isUserForest ? 'flex' : 'none';
+            menu.classList.add('visible');
+            menu._activeForest = { feature, layer, geometry: feature.geometry, id: props.id, isUserForest };
+            if (window._closeForestContextMenu) window._closeForestContextMenu();
+            const closeMenu = function(){ menu.classList.remove('visible'); menu._activeForest = null; if (menu._closeDocListener) { document.removeEventListener('click', menu._closeDocListener); menu._closeDocListener = null; } window._closeForestContextMenu = null; };
+            window._closeForestContextMenu = closeMenu;
+            menu._closeDocListener = closeMenu;
+            setTimeout(function(){ document.addEventListener('click', closeMenu); }, 0);
+          });
+        }
         function setupLandLayer(layer,feature,baseStyle,isLease){
           layer._landType = isLease ? 'lease' : 'available';
           layer._feature = feature;
@@ -1447,6 +1614,7 @@
           applyLandSelection(null);
         });
         if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+        window._forestUnionGeom = forestUnionGeom || null;
       }).catch(()=>{});
     }
     const savedMapMode = safeStorage.getItem('smart-forest-map-mode') || 'national';
@@ -2518,6 +2686,24 @@
         setForestLandsVisible(!state.forestLandsVisible);
       });
 
+      document.getElementById('forest-context-menu')?.addEventListener('click', function(e){
+        e.stopPropagation();
+        const btn = e.target.closest('[data-action]');
+        const menu = document.getElementById('forest-context-menu');
+        if (!btn || !menu?._activeForest) return;
+        const forest = menu._activeForest;
+        if (btn.dataset.action === 'add-lease') {
+          window._closeForestContextMenu?.();
+          window.__startLeaseDrawForForest?.(forest);
+        } else if (btn.dataset.action === 'delete-forest' && forest.isUserForest && forest.id) {
+          if (!confirm('O\'rmon hududini o\'chirishni xohlaysizmi?')) return;
+          window._closeForestContextMenu?.();
+          fetch('/api/v1/forest-areas/' + forest.id, { method: 'DELETE' })
+            .then(r=>{ if (r.ok && typeof loadLandParcels === 'function') loadLandParcels(); else alert('O\'chirish xatosi'); })
+            .catch(()=> alert('O\'chirish xatosi'));
+        }
+      });
+
       document.querySelectorAll('.layer-panel-item[data-layer]').forEach(item => {
         const layerId = item.dataset.layer;
         const toggleEl = item.querySelector('.layer-panel-toggle');
@@ -2578,6 +2764,284 @@
         state.collapsed = !panel.classList.toggle('collapsed');
         saveState(state);
       });
+
+      window.__setupAddForest = function setupAddForest(){
+        const addForestBtn = document.getElementById('add-forest-btn');
+        const addForestModal = document.getElementById('add-forest-modal');
+        const addForestForm = document.getElementById('add-forest-form');
+        const addForestCancel = document.getElementById('add-forest-cancel');
+        const addForestSave = document.getElementById('add-forest-save');
+        if (!addForestBtn || typeof L.Draw === 'undefined') return;
+        let drawnItemsForest = new L.FeatureGroup();
+        map.addLayer(drawnItemsForest);
+        let drawControlForest = null;
+        let pendingForestGeometry = null;
+        let isAddingForest = false;
+        addForestBtn.onclick = function(){
+          if (addForestBtn.disabled) return;
+          isAddingForest = true;
+          eventMarkersWasOn = state.eventMarkers;
+          if (state.eventMarkers) { state.eventMarkers = false; applyEventMarkers(false); }
+          pendingForestGeometry = null;
+          drawnItemsForest.clearLayers();
+          drawControlForest = new L.Control.Draw({
+            draw: { polygon: { allowIntersection: false, shapeOptions: { color: '#166534', weight: 2, fillColor: '#22c55e', fillOpacity: 0.4 }, guideLines: true, showArea: true, metric: true, repeatMode: false }, polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false },
+            edit: { featureGroup: drawnItemsForest, remove: false }
+          });
+          map.addControl(drawControlForest);
+          new L.Draw.Polygon(map, drawControlForest.options.draw.polygon).enable();
+          addForestBtn.disabled = true;
+        };
+        map.on(L.Draw.Event.CREATED, function onForestCreated(e){
+          if (!isAddingForest) return;
+          isAddingForest = false;
+          const layer = e.layer;
+          drawnItemsForest.addLayer(layer);
+          const geo = layer.toGeoJSON();
+          if (geo.geometry && geo.geometry.type === 'Polygon' && geo.geometry.coordinates?.[0]?.length >= 4) {
+            pendingForestGeometry = geo.geometry;
+            map.removeControl(drawControlForest);
+            drawControlForest = null;
+            addForestBtn.disabled = false;
+            addForestModal.classList.add('visible');
+            addForestForm.reset();
+            if (eventMarkersWasOn) { state.eventMarkers = true; applyEventMarkers(true); }
+          }
+        });
+        addForestCancel.onclick = ()=>{ addForestModal.classList.remove('visible'); pendingForestGeometry = null; drawnItemsForest.clearLayers(); addForestBtn.disabled = false; if (eventMarkersWasOn) { state.eventMarkers = true; applyEventMarkers(true); } };
+        addForestForm.onsubmit = function(ev){
+          ev.preventDefault();
+          if (!pendingForestGeometry) return;
+          addForestSave.disabled = true;
+          fetch('/api/v1/forest-areas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('forest-name').value.trim() || undefined, geometry: pendingForestGeometry }) })
+            .then(r=>{ if (!r.ok) throw new Error(); addForestModal.classList.remove('visible'); pendingForestGeometry = null; drawnItemsForest.clearLayers(); if (typeof loadLandParcels === 'function') loadLandParcels();  })
+            .catch(()=> alert('O\'rmon hududini saqlashda xatolik.'))
+            .finally(()=>{ addForestSave.disabled = false; });
+        };
+      };
+
+      let eventMarkersWasOn = false;
+      let drawMaskLayer = null;
+      window.__setupAddLease = function setupAddLease(){
+        if (typeof L.Draw === 'undefined') return;
+        let isAddingLease = false;
+        let drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        const drawControl = new L.Control.Draw({
+          draw: {
+            polygon: {
+              allowIntersection: false,
+              shapeOptions: { color: '#166534', weight: 2, fillColor: '#22c55e', fillOpacity: 0.4 },
+              guideLines: true,
+              showArea: true,
+              metric: true,
+              repeatMode: false
+            },
+            polyline: false,
+            circle: false,
+            rectangle: false,
+            marker: false,
+            circlemarker: false
+          },
+          edit: { featureGroup: drawnItems, remove: false }
+        });
+        let drawAreaTooltip = null;
+        let pendingGeometry = null;
+        let drawControlOnMap = false;
+        const addLeaseModal = document.getElementById('add-lease-modal');
+        const addLeaseForm = document.getElementById('add-lease-form');
+        const addLeaseCancel = document.getElementById('add-lease-cancel');
+        const addLeaseSave = document.getElementById('add-lease-save');
+        function updateDrawAreaTooltip(geo){
+          if (!geo || !geo.coordinates?.[0]?.length) return;
+          if (typeof turf === 'undefined' || typeof turf.area !== 'function') return;
+          try {
+            const poly = turf.polygon(geo.coordinates);
+            const areaM2 = turf.area(poly);
+            const areaHa = (areaM2 / 10000).toFixed(2);
+            const center = turf.centroid(poly);
+            if (!drawAreaTooltip) {
+              drawAreaTooltip = L.tooltip({ permanent: true, className: 'draw-area-tooltip', direction: 'center', offset: [0, 0] });
+            }
+            drawAreaTooltip.setContent(areaHa + ' ga').setLatLng([center.geometry.coordinates[1], center.geometry.coordinates[0]]);
+            if (!map.hasLayer(drawAreaTooltip)) drawAreaTooltip.addTo(map);
+          } catch(_){}
+        }
+        function removeDrawAreaTooltip(){
+          if (drawAreaTooltip && map.hasLayer(drawAreaTooltip)) map.removeLayer(drawAreaTooltip);
+        }
+        let eventMarkersWasOn = false;
+        function restoreEventMarkers(){
+          if (eventMarkersWasOn) { state.eventMarkers = true; applyEventMarkers(true); }
+          eventMarkersWasOn = false;
+        }
+        map.on(L.Draw.Event.DRAWVERTEX, function onDrawVertex(e){
+          const layers = e.layers;
+          if (layers && layers.getLayers && layers.getLayers().length >= 3) {
+            const markers = layers.getLayers();
+            const latlngs = markers.map(m=> m.getLatLng?.()).filter(Boolean);
+            if (latlngs.length >= 3) {
+              const first = latlngs[0];
+              const ring = [...latlngs.map(l=> [l.lng, l.lat]), [first.lng, first.lat]];
+              updateDrawAreaTooltip({ type: 'Polygon', coordinates: [ring] });
+            }
+          }
+        });
+        map.on(L.Draw.Event.DRAWSTOP, function onDrawStop(){
+          if (isAddingLease) { isAddingLease = false; removeDrawMask(); removeDrawAreaTooltip(); if (drawControl && drawControlOnMap) { map.removeControl(drawControl); drawControlOnMap = false; } restoreEventMarkers(); }
+        });
+        map.on(L.Draw.Event.CREATED, function onDrawCreated(e){
+          if (!isAddingLease) return;
+          isAddingLease = false;
+          removeDrawMask();
+          const layer = e.layer;
+          drawnItems.addLayer(layer);
+          let geo = layer.toGeoJSON();
+          if (geo.geometry && geo.geometry.type === 'Polygon' && geo.geometry.coordinates?.[0]?.length >= 4) {
+            const forestGeom = window._selectedForestGeom;
+            let geomToSave = geo.geometry;
+            if (forestGeom && typeof turf !== 'undefined' && turf.intersect) {
+              try {
+                const inter = turf.intersect(turf.featureCollection([turf.feature(forestGeom), turf.feature(geo.geometry)]));
+                if (inter?.geometry && (inter.geometry.type === 'Polygon' || inter.geometry.type === 'MultiPolygon')) {
+                  const ring = inter.geometry.type === 'Polygon' ? inter.geometry.coordinates?.[0] : inter.geometry.coordinates?.[0]?.[0];
+                  if (ring && ring.length >= 4) geomToSave = inter.geometry;
+                  else { alert('Belgilangan hudud o\'rmon chegarasidan tashqarida.'); return; }
+                } else { alert('Belgilangan hudud o\'rmon chegarasidan tashqarida.'); return; }
+              } catch(_){}
+            }
+            updateDrawAreaTooltip(geo.geometry);
+            pendingGeometry = geomToSave;
+            if (drawControlOnMap) { map.removeControl(drawControl); drawControlOnMap = false; }
+            addLeaseModal.classList.add('visible');
+            addLeaseForm.reset();
+          }
+        });
+        function removeDrawMask(){
+          if (drawMaskLayer && map.hasLayer(drawMaskLayer)) { map.removeLayer(drawMaskLayer); drawMaskLayer = null; }
+          map.off('mousedown', _leaseDrawBlocker);
+          map.off('click', _leaseDrawBlocker);
+          delete map._leaseDrawForestGeom;
+        }
+        function addDrawMask(forestGeom){
+          if (!forestGeom || typeof turf === 'undefined') return;
+          removeDrawMask();
+          try {
+            let holes = [];
+            if (forestGeom.type === 'Polygon' && forestGeom.coordinates?.[0]) {
+              const ring = forestGeom.coordinates[0];
+              if (ring.length >= 3) holes.push([...ring.slice(0,-1).reverse(), [ring[0][0], ring[0][1]]]);
+            } else if (forestGeom.type === 'MultiPolygon' && forestGeom.coordinates?.length) {
+              for (let i = 0; i < forestGeom.coordinates.length; i++) {
+                const ring = forestGeom.coordinates[i]?.[0];
+                if (ring && ring.length >= 3) holes.push([...ring.slice(0,-1).reverse(), [ring[0][0], ring[0][1]]]);
+              }
+            }
+            if (!holes.length) return;
+            const world = [[[-180,-85],[-180,85],[180,85],[180,-85],[-180,-85]], ...holes];
+            const maskGeo = { type: 'Polygon', coordinates: world };
+            const maskPane = map.getPane('drawMaskPane') || map.createPane('drawMaskPane');
+            maskPane.style.zIndex = 2000;
+            maskPane.style.pointerEvents = 'none';
+            drawMaskLayer = L.geoJSON({ type: 'Feature', geometry: maskGeo, properties: {} }, {
+              pane: 'drawMaskPane',
+              style: { fillColor: '#000', fillOpacity: 0.15, color: 'transparent', interactive: true },
+              interactive: true
+            });
+            drawMaskLayer.eachLayer(function(l){
+              const el = l.getElement?.();
+              if (el) { el.style.cursor = 'not-allowed'; el.style.pointerEvents = 'auto'; el.classList.add('draw-mask-overlay'); }
+              l.on('click mousedown pointerdown', function(ev){ if (ev?.originalEvent) { ev.originalEvent.stopImmediatePropagation(); ev.originalEvent.preventDefault(); } if (ev) L.DomEvent.stop(ev); });
+            });
+            drawMaskLayer.addTo(map);
+            map._leaseDrawForestGeom = forestGeom;
+          } catch(_){}
+        }
+        function _isPointInForest(latLng, geom){
+          if (!geom || typeof turf === 'undefined') return true;
+          try {
+            const pt = turf.point([latLng.lng, latLng.lat]);
+            if (geom.type === 'Polygon') return !!turf.booleanPointInPolygon(pt, turf.feature(geom));
+            if (geom.type === 'MultiPolygon') return !!turf.booleanPointInPolygon(pt, turf.feature(geom));
+          } catch(_){ return true; }
+          return true;
+        }
+        function _leaseDrawBlocker(e){
+          if (!isAddingLease || !map._leaseDrawForestGeom) return;
+          const t = e.originalEvent?.target;
+          if (t?.closest?.('.leaflet-draw-toolbar') || t?.closest?.('.leaflet-draw-actions')) return;
+          const latLng = map.containerPointToLatLng(e.containerPoint);
+          if (!_isPointInForest(latLng, map._leaseDrawForestGeom)) {
+            e.originalEvent.stopImmediatePropagation();
+            e.originalEvent.preventDefault();
+          }
+        }
+        window.__startLeaseDrawForForest = function(forest){
+          if (!forest?.geometry) return;
+          window._selectedForestGeom = forest.geometry;
+          isAddingLease = true;
+          pendingGeometry = null;
+          drawnItems.clearLayers();
+          eventMarkersWasOn = state.eventMarkers;
+          if (state.eventMarkers) { state.eventMarkers = false; applyEventMarkers(false); }
+          addDrawMask(forest.geometry);
+          map.on('mousedown', _leaseDrawBlocker, map);
+          map.on('click', _leaseDrawBlocker, map);
+          if (!drawControlOnMap) { map.addControl(drawControl); drawControlOnMap = true; }
+          new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+        };
+        addLeaseCancel.onclick = function(){
+          addLeaseModal.classList.remove('visible');
+          pendingGeometry = null;
+          drawnItems.clearLayers();
+          removeDrawAreaTooltip();
+          removeDrawMask();
+          if (drawControl && drawControlOnMap) { map.removeControl(drawControl); drawControlOnMap = false; }
+          restoreEventMarkers();
+        };
+        addLeaseForm.onsubmit = function(ev){
+          ev.preventDefault();
+          if (!pendingGeometry) return;
+          const name = document.getElementById('lease-name').value.trim();
+          const region = document.getElementById('lease-region').value;
+          if (!name || !region) return;
+          addLeaseSave.disabled = true;
+          fetch('/api/v1/land-parcels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name, region,
+              lease_holder: document.getElementById('lease-holder').value.trim() || undefined,
+              contract_number: document.getElementById('lease-contract').value.trim() || undefined,
+              contract_start: document.getElementById('lease-start').value || undefined,
+              contract_expiry: document.getElementById('lease-expiry').value || undefined,
+              geometry: pendingGeometry
+            })
+          }).then(r=>{
+            if (!r.ok) throw new Error('Saqlash xatosi');
+            addLeaseModal.classList.remove('visible');
+            pendingGeometry = null;
+            drawnItems.clearLayers();
+            removeDrawAreaTooltip();
+            restoreEventMarkers();
+            state.forestLandsVisible = true;
+            state.leaseAreas = true;
+            state.forestLandsExpanded = true;
+            saveState(state);
+            document.querySelector('.layer-panel-group[data-group="forestLands"]')?.classList.add('expanded');
+            setToggle('toggle-forestLands', true);
+            setToggle('toggle-leaseAreas', true);
+            setForestLandsVisible(true);
+            if (typeof loadLandParcels === 'function') loadLandParcels();
+            if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+          }).catch(()=>{
+            alert('Ijara hududini saqlashda xatolik. Server ishlayotganligini tekshiring.');
+            restoreEventMarkers();
+          }).finally(()=>{
+            addLeaseSave.disabled = false;
+          });
+        };
+      };
     })();
 
     function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
@@ -2660,11 +3124,14 @@
     if (introEl) {
       introEl.addEventListener('animationend', (e)=>{ if (e.animationName === 'introOverlay') introEl.remove(); });
     }
+
     map.whenReady(()=>{
       map.flyToBounds(UZB_BOUNDS, { padding: [24, 24], duration: 3.6, easeLinearity: 0.2 });
       loadRegions();
       loadInitial();
       loadLandParcels();
+      if (window.__setupAddForest) window.__setupAddForest();
+      if (window.__setupAddLease) window.__setupAddLease();
       if (showRiskLayer) {
         riskLastUpdate = 0;
         updateRiskLayer();
