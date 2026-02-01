@@ -9,6 +9,8 @@ const AppDataSource = new DataSource({
     __dirname + '/migrations/1738281600000-CreateEventsTable.ts',
     __dirname + '/migrations/1738281700000-AddSpatialIndexEvents.ts',
     __dirname + '/migrations/1738281800000-CreateUzbekistanBoundary.ts',
+    __dirname + '/migrations/1738281900000-CreateLandParcelsTable.ts',
+    __dirname + '/migrations/1738282000000-CreateForestAreasTable.ts',
   ],
   synchronize: false,
 });

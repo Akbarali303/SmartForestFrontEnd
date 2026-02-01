@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <style>
     #intro-overlay{
       position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -103,7 +104,7 @@
     .land-popup-btn.active{background:#e5e7eb;color:#374151;cursor:default}
     .land-parcel-tooltip.leaflet-tooltip{font-family:'Source Sans 3',system-ui,sans-serif;font-size:12px;font-weight:600;color:#0f766e;background:rgba(255,255,255,.97);border:1px solid rgba(15,118,110,.4);border-radius:6px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.1);white-space:nowrap}
     path.land-parcel-path{transition:fill-opacity .35s ease,stroke .3s ease,stroke-width .25s ease,filter .25s ease,opacity .4s ease;animation:landParcelFadeIn .5s ease forwards;stroke-linejoin:round;stroke-linecap:round;pointer-events:auto}
-    path.land-parcel-path.forest-contour{pointer-events:none}
+    path.land-parcel-path.forest-contour{pointer-events:auto}
     @keyframes landParcelFadeIn{0%{opacity:0}100%{opacity:1}}
     path.land-parcel-path.selected{filter:drop-shadow(0 0 10px rgba(34,197,94,.55))}
     path.land-parcel-path.selected.available-selected{filter:drop-shadow(0 0 10px rgba(234,88,12,.5))}
@@ -268,7 +269,7 @@
 
     :root{--navbar-height:52px}
     #layer-panel{
-      position:absolute;top:calc(var(--navbar-height) + 20px);left:12px;z-index:1000;
+      position:absolute;top:calc(var(--navbar-height) + 20px);right:12px;left:auto;z-index:1000;
       width:260px;background:rgba(255,255,255,.95);
       backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
       border:1px solid rgba(0,0,0,.1);
@@ -353,6 +354,61 @@
     .layer-panel-item.radio .layer-panel-toggle.on{background:rgba(34,197,94,.55);border-color:rgba(34,197,94,.7)}
     body.command-mode #layer-panel{display:none}
 
+    #main-menu{
+      position:absolute;top:calc(var(--navbar-height) + 20px);left:12px;z-index:1000;
+      width:280px;background:rgba(255,255,255,.95);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid rgba(0,0,0,.1);border-radius:8px;
+      box-shadow:0 2px 12px rgba(0,0,0,.08);
+      font-family:'Source Sans 3',system-ui,-apple-system,sans-serif;
+      overflow:hidden;
+    }
+    body.dark #main-menu,body.intel #main-menu{background:rgba(248,250,252,.92);border-color:rgba(255,255,255,.2);box-shadow:0 4px 24px rgba(0,0,0,.25)}
+    #main-menu .menu-section{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,.06)}
+    body.dark #main-menu .menu-section,body.intel #main-menu .menu-section{border-color:rgba(255,255,255,.08)}
+    #main-menu .menu-section:last-child{border-bottom:none}
+    #main-menu .menu-section-title{font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(0,0,0,.55);margin-bottom:10px;text-transform:uppercase}
+    body.dark #main-menu .menu-section-title,body.intel #main-menu .menu-section-title{color:rgba(255,255,255,.5)}
+    #main-menu .nested-menu{padding:10px 12px}
+    #main-menu .menu-item{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:4px;background:rgba(0,0,0,.03);border-radius:6px;cursor:pointer;transition:background .2s}
+    #main-menu .menu-item:hover{background:rgba(0,0,0,.06)}
+    #main-menu .menu-item:last-child{margin-bottom:0}
+    #main-menu .menu-item.expandable{padding-right:8px}
+    #main-menu .menu-item-expand{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.5);transition:transform .25s}
+    #main-menu .menu-item.expanded .menu-item-expand{transform:rotate(90deg)}
+    #main-menu .menu-item-children{margin-left:12px;padding-left:10px;border-left:1px solid rgba(0,0,0,.1);max-height:0;overflow:hidden;transition:max-height .3s}
+    #main-menu .menu-item.expanded .menu-item-children{max-height:800px}
+    #main-menu .menu-subitem{padding:8px 10px;margin:4px 0;background:rgba(0,0,0,.02);border-radius:4px;cursor:pointer;font-size:12px}
+    #main-menu .menu-subitem:hover{background:rgba(0,0,0,.05)}
+    #main-menu .nested-menu{list-style:none;margin:0;padding:0}
+    #main-menu .nested-item{display:block;margin:0}
+    #main-menu .nested-item-head{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;transition:background .2s}
+    #main-menu .nested-item-head:hover{background:rgba(0,0,0,.05)}
+    #main-menu .nested-item-expand{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.5);transition:transform .2s}
+    #main-menu .nested-item.expanded > .nested-item-head .nested-item-expand{transform:rotate(90deg)}
+    #main-menu .nested-item-children{margin-left:16px;padding-left:8px;border-left:1px solid rgba(0,0,0,.08);max-height:0;overflow:hidden;transition:max-height .35s ease}
+    #main-menu .nested-item.expanded > .nested-item-children{max-height:2000px}
+    #main-menu .nested-item-children .nested-item-children{margin-left:12px}
+    #main-menu .nested-leaf{display:flex;align-items:center;gap:8px;padding:6px 10px 6px 28px;cursor:pointer;border-radius:4px;font-size:12px;transition:background .2s}
+    #main-menu .nested-leaf:hover{background:rgba(0,0,0,.04)}
+    #main-menu .nested-leaf .layer-panel-toggle{order:1;margin-left:auto;flex-shrink:0}
+    #main-menu .nested-leaf.basemap .layer-panel-toggle{width:18px;height:18px;border-radius:50%;border:2px solid rgba(0,0,0,.25)}
+    #main-menu .nested-leaf.basemap .layer-panel-toggle::after{display:none}
+    #main-menu .nested-leaf.basemap .layer-panel-toggle.on{background:rgba(34,197,94,.55);border-color:rgba(34,197,94,.7)}
+    #main-menu .menu-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;background:#166534;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;justify-content:center;transition:background .2s}
+    #main-menu .menu-btn:hover{background:#14532d}
+    body.command-mode #main-menu{display:none}
+    .resource-modal{display:none;position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+    .resource-modal.visible{display:flex}
+    .resource-modal-dialog{width:min(420px,94vw);max-height:85vh;overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);font-family:'Source Sans 3',system-ui,sans-serif}
+    body.dark .resource-modal-dialog,body.intel .resource-modal-dialog{background:rgba(18,22,26,.98)}
+    .resource-modal-header{padding:16px 20px;background:linear-gradient(135deg,#166534 0%,#14532d 100%);color:#fff;font-weight:700;font-size:16px;border-radius:12px 12px 0 0}
+    .resource-modal-body{padding:20px;font-size:13px;line-height:1.6}
+    .resource-modal-body .info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.08)}
+    .resource-modal-body .info-row:last-child{border-bottom:none}
+    .resource-modal-footer{padding:16px 20px;border-top:1px solid rgba(0,0,0,.08);display:flex;gap:10px;flex-wrap:wrap}
+    body.dark .resource-modal-footer,body.intel .resource-modal-footer{border-color:rgba(255,255,255,.08)}
+
     .layer-panel-group{margin-bottom:4px}
     .layer-panel-group-header{
       display:flex;align-items:center;gap:8px;
@@ -397,7 +453,8 @@
     body.dark .leaflet-control-zoom a,body.intel .leaflet-control-zoom a{color:#fff !important;background:transparent !important}
     body.dark .leaflet-control-zoom a:hover,body.intel .leaflet-control-zoom a:hover{background:rgba(255,255,255,.12) !important;color:#fff !important}
     @media (max-width:640px){
-      #layer-panel{top:calc(var(--navbar-height) + 12px);left:8px}
+      #layer-panel{top:calc(var(--navbar-height) + 12px);right:8px;left:auto}
+      #main-menu{top:calc(var(--navbar-height) + 12px);left:8px;width:260px}
       .leaflet-bottom.leaflet-left{left:8px !important;bottom:16px !important}
     }
 
@@ -562,6 +619,46 @@
     #error-boundary .error-msg{font-size:12px;color:rgba(255,255,255,.5);max-width:420px;text-align:center;line-height:1.5}
     #error-boundary .error-dismiss{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:10px 24px;border-radius:6px;cursor:pointer;font:11px 'JetBrains Mono',monospace;letter-spacing:.1em}
     #error-boundary .error-dismiss:hover{background:rgba(255,255,255,.15)}
+
+    #add-forest-btn{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;align-items:center;gap:8px;align-items:center;gap:8px;padding:10px 18px;background:#166534;color:#fff;border:none;border-radius:8px;font:13px 'Source Sans 3',system-ui,sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.15);transition:background .2s,transform .2s}
+    #add-forest-btn:hover{background:#14532d;transform:translateX(-50%) translateY(-1px)}
+    #add-forest-btn:disabled{background:#9ca3af;cursor:not-allowed;transform:translateX(-50%)}
+    body.command-mode #add-forest-btn{display:none !important}
+    .forest-context-menu{position:fixed;z-index:10001;min-width:240px;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);overflow:hidden;font-family:'Source Sans 3',system-ui,sans-serif;display:none}
+    .forest-context-menu.visible{display:block}
+    body.dark .forest-context-menu,body.intel .forest-context-menu{background:rgba(18,22,26,.98);border:1px solid rgba(255,255,255,.1)}
+    .forest-context-menu .ctx-btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:#166534;text-align:left;transition:background .15s}
+    .forest-context-menu .ctx-btn:hover{background:rgba(22,101,52,.1)}
+    .forest-context-menu .ctx-btn.danger{color:#b91c1c}
+    .forest-context-menu .ctx-btn.danger:hover{background:rgba(185,28,28,.1)}
+    .forest-context-menu .ctx-divider{border-top:1px solid rgba(0,0,0,.08);margin:0}
+    body.dark .forest-context-menu .ctx-divider,body.intel .forest-context-menu .ctx-divider{border-color:rgba(255,255,255,.1)}
+    .forest-context-menu .ctx-info{padding:12px 16px;font-size:12px;color:#6b7280;line-height:1.5;background:rgba(0,0,0,.03)}
+    body.dark .forest-context-menu .ctx-info,body.intel .forest-context-menu .ctx-info{background:rgba(255,255,255,.05);color:rgba(255,255,255,.6)}
+    .forest-context-menu .ctx-info strong{color:#1a1f22}
+    body.dark .forest-context-menu .ctx-info strong,body.intel .forest-context-menu .ctx-info strong{color:#fff}
+    .draw-mask-overlay{pointer-events:auto;cursor:not-allowed}
+    .add-lease-modal{display:none;position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+    .add-lease-modal.visible{display:flex}
+    .add-lease-dialog{width:min(420px,94vw);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;font-family:'Source Sans 3',system-ui,sans-serif}
+    body.dark .add-lease-dialog,body.intel .add-lease-dialog{background:rgba(18,22,26,.98)}
+    .add-lease-header{padding:16px 20px;background:linear-gradient(135deg,#166534 0%,#14532d 100%);color:#fff;font-weight:700;font-size:16px}
+    .add-lease-body{padding:20px;display:flex;flex-direction:column;gap:14px}
+    .add-lease-field label{display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px}
+    .add-lease-field input,.add-lease-field select{width:100%;padding:10px 12px;border:1px solid rgba(0,0,0,.15);border-radius:6px;font-size:14px}
+    body.dark .add-lease-field input,body.dark .add-lease-field select,body.intel .add-lease-field input,body.intel .add-lease-field select{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff}
+    .add-lease-footer{display:flex;gap:10px;padding:16px 20px;border-top:1px solid rgba(0,0,0,.08)}
+    body.dark .add-lease-footer,body.intel .add-lease-footer{border-top-color:rgba(255,255,255,.08)}
+    .add-lease-btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s}
+    .add-lease-btn.primary{background:#166534;color:#fff}
+    .add-lease-btn.primary:hover{background:#14532d}
+    .add-lease-btn.secondary{background:#e5e7eb;color:#374151}
+    .add-lease-btn.secondary:hover{background:#d1d5db}
+    body.dark .add-lease-btn.secondary,body.intel .add-lease-btn.secondary{background:rgba(255,255,255,.1);color:#e5e7eb}
+    body.dark .add-lease-btn.secondary:hover,body.intel .add-lease-btn.secondary:hover{background:rgba(255,255,255,.15)}
+    .add-lease-btn:disabled{opacity:.6;cursor:not-allowed}
+    .leaflet-draw-toolbar a{background-image:url('https://unpkg.com/leaflet-draw@1.0.4/dist/images/spritesheet.png')!important}
+    .draw-area-tooltip{font-family:'Source Sans 3',system-ui,sans-serif;font-size:13px;font-weight:600;color:#166534;background:rgba(255,255,255,.97);border:1px solid rgba(22,101,52,.4);border-radius:6px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,.1);white-space:nowrap}
   </style>
 </head>
 <body>
@@ -594,6 +691,47 @@
     </div>
   </div>
     <div class="map-skeleton-wrap">
+      <div id="main-menu">
+        <ul class="nested-menu">
+          <li class="nested-item" data-id="commands">
+            <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span><span class="nested-item-label">Buyruqlar</span></div>
+            <ul class="nested-item-children"><li class="nested-leaf" data-action="demo">DEMO rejim</li></ul>
+          </li>
+          <li class="nested-item" data-id="resources">
+            <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg></span><span class="nested-item-label">Mavjud resurslar</span></div>
+            <ul class="nested-item-children">
+              <li class="nested-item" data-id="forests">
+                <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg></span><span class="nested-item-label">O'rmon hududlari</span></div>
+                <ul class="nested-item-children" id="forest-list"></ul>
+              </li>
+              <li class="nested-leaf menu-btn" data-action="add-forest"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>O'rmon hududini qo'shish</li>
+            </ul>
+          </li>
+          <li class="nested-item" data-id="view">
+            <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span><span class="nested-item-label">Ko'rinish</span></div>
+            <ul class="nested-item-children">
+              <li class="nested-item" data-id="layers">
+                <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-label">Qatlamlar</span></div>
+                <ul class="nested-item-children">
+                  <li class="nested-leaf" data-layer="eventMarkers">Hodisa belgilari<span class="layer-panel-toggle" id="main-toggle-eventMarkers"></span></li>
+                  <li class="nested-leaf" data-layer="aiRisk">AI xavf<span class="layer-panel-toggle" id="main-toggle-aiRisk"></span></li>
+                  <li class="nested-leaf" data-layer="cameras">Kamerlar<span class="layer-panel-toggle" id="main-toggle-cameras"></span></li>
+                  <li class="nested-leaf" data-layer="boundary">O'zbekiston chegarasi<span class="layer-panel-toggle" id="main-toggle-boundary"></span></li>
+                  <li class="nested-leaf" data-layer="forestLands">O'rmon yerlari<span class="layer-panel-toggle" id="main-toggle-forestLands"></span></li>
+                </ul>
+              </li>
+              <li class="nested-item" data-id="basemap">
+                <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-label">Xarita turi</span></div>
+                <ul class="nested-item-children">
+                  <li class="nested-leaf basemap" data-basemap="satellite">Sun'iy yo'ldosh<span class="layer-panel-toggle" id="main-basemap-satellite"></span></li>
+                  <li class="nested-leaf basemap" data-basemap="hybrid">Gibrid<span class="layer-panel-toggle" id="main-basemap-hybrid"></span></li>
+                  <li class="nested-leaf basemap" data-basemap="topographic">Topografik<span class="layer-panel-toggle" id="main-basemap-topographic"></span></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
       <div id="layer-panel">
         <div id="layer-panel-header">
           <span class="layer-panel-title">Qatlamlar paneli</span>
@@ -668,6 +806,10 @@
           </div>
         </div>
       </div>
+      <button type="button" id="add-forest-btn" title="O'rmon hududini xaritada belgilash">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        O'rmon hududini qo'shish
+      </button>
       <div id="map"></div>
       <div id="map-skeleton">
         <div class="skeleton-dots skeleton-pulse"><span class="skeleton-dot"></span><span class="skeleton-dot"></span><span class="skeleton-dot"></span></div>
@@ -712,6 +854,84 @@
     <div class="stats-row"><span>Yong'inlar</span><span>0</span></div>
     <div class="stats-row"><span>Noqonuniy daraxt kesish</span><span>0</span></div>
     <div class="stats-hint">Filterni tozalash uchun viloyatni qayta bosing</div>
+  </div>
+  <div id="resource-modal" class="resource-modal">
+    <div class="resource-modal-dialog">
+      <div class="resource-modal-header" id="resource-modal-title">—</div>
+      <div class="resource-modal-body" id="resource-modal-body"></div>
+      <div class="resource-modal-footer" id="resource-modal-footer"></div>
+    </div>
+  </div>
+  <div id="forest-context-menu" class="forest-context-menu">
+    <button type="button" class="ctx-btn" data-action="add-lease"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ijara hududi qo'shish</button>
+    <button type="button" class="ctx-btn danger" data-action="delete-forest"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>O'rmonni o'chirish</button>
+    <hr class="ctx-divider">
+    <div class="ctx-info" id="forest-ctx-info">—</div>
+  </div>
+  <div class="add-lease-modal" id="add-forest-modal">
+    <div class="add-lease-dialog">
+      <div class="add-lease-header">O'rmon hududini saqlash</div>
+      <form id="add-forest-form" class="add-lease-body">
+        <div class="add-lease-field">
+          <label for="forest-name">O'rmon nomi (ixtiyoriy)</label>
+          <input type="text" id="forest-name" placeholder="Misol: Chatkal o'rmoni" maxlength="255">
+        </div>
+      </form>
+      <div class="add-lease-footer">
+        <button type="button" class="add-lease-btn secondary" id="add-forest-cancel">Bekor qilish</button>
+        <button type="submit" form="add-forest-form" class="add-lease-btn primary" id="add-forest-save">Saqlash</button>
+      </div>
+    </div>
+  </div>
+  <div class="add-lease-modal" id="add-lease-modal">
+    <div class="add-lease-dialog">
+      <div class="add-lease-header">Ijara hududini saqlash</div>
+      <form id="add-lease-form" class="add-lease-body">
+        <div class="add-lease-field">
+          <label for="lease-name">Maydon nomi *</label>
+          <input type="text" id="lease-name" required placeholder="Misol: Chatkal Ijara 2" maxlength="255">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-region">Viloyat *</label>
+          <select id="lease-region" required>
+            <option value="">Tanlang</option>
+            <option value="Tashkent">Toshkent</option>
+            <option value="Samarkand">Samarqand</option>
+            <option value="Fergana">Farg'ona</option>
+            <option value="Bukhara">Buxoro</option>
+            <option value="Surxondaryo">Surxondaryo</option>
+            <option value="Karakalpakstan">Qoraqalpog'iston</option>
+            <option value="Navoiy">Navoiy</option>
+            <option value="Qashqadaryo">Qashqadaryo</option>
+            <option value="Jizzakh">Jizzax</option>
+            <option value="Andijan">Andijon</option>
+            <option value="Namangan">Namangan</option>
+            <option value="Sirdaryo">Sirdaryo</option>
+            <option value="Khorezm">Xorazm</option>
+          </select>
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-holder">Ijarachi</label>
+          <input type="text" id="lease-holder" placeholder="Tashkilot nomi" maxlength="255">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-contract">Shartnoma raqami</label>
+          <input type="text" id="lease-contract" placeholder="IJ-2024/001" maxlength="100">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-start">Shartnoma boshlanish sanasi</label>
+          <input type="date" id="lease-start">
+        </div>
+        <div class="add-lease-field">
+          <label for="lease-expiry">Shartnoma tugash sanasi</label>
+          <input type="date" id="lease-expiry">
+        </div>
+      </form>
+      <div class="add-lease-footer">
+        <button type="button" class="add-lease-btn secondary" id="add-lease-cancel">Bekor qilish</button>
+        <button type="submit" form="add-lease-form" class="add-lease-btn primary" id="add-lease-save">Saqlash</button>
+      </div>
+    </div>
   </div>
   <div id="map-mode-switcher" class="map-mode-switcher">
     <button type="button" class="mode-btn active" data-mode="national">MILLIY KO'RINISH</button>
@@ -760,6 +980,7 @@
     })();
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
@@ -857,12 +1078,12 @@
     }
     if (!map.getPane('forestPane')) {
       map.createPane('forestPane');
-      map.getPane('forestPane').style.zIndex = 310;
-      map.getPane('forestPane').style.pointerEvents = 'none';
+      map.getPane('forestPane').style.zIndex = 300;
+      map.getPane('forestPane').style.pointerEvents = 'auto';
     }
     if (!map.getPane('landParcelsPane')) {
       map.createPane('landParcelsPane');
-      map.getPane('landParcelsPane').style.zIndex = 450;
+      map.getPane('landParcelsPane').style.zIndex = 460;
       map.getPane('landParcelsPane').style.pointerEvents = 'auto';
     }
 
@@ -1275,17 +1496,32 @@
       }
     }
     const FOREST_ZONES_URL = '/public/geo/forest_zones_demo.json';
+    const FOREST_AREAS_API = '/api/v1/forest-areas';
     function loadForestZones(){
-      return fetch(FOREST_ZONES_URL).then(r=>r.ok?r.json():Promise.reject()).then(geojson=>{
-        const features = (geojson.features || []).map(f=> makeIrregularPolygon({...f, properties: {...(f.properties||{}), type: 'forest_demo'}}));
-        return features.length ? { type:'FeatureCollection', features } : null;
-      }).catch(()=>null);
+      return fetch(FOREST_AREAS_API).then(r=>r.ok?r.json():null).catch(()=>null).then(apiForest=>{
+        return fetch(FOREST_ZONES_URL).then(r=>r.ok?r.json():null).catch(()=>null).then(demo=>{
+          const demoFeats = (demo?.features || []).map(f=> makeIrregularPolygon({...f, properties: {...(f.properties||{}), type: 'forest_demo'}}));
+          const apiFeats = (apiForest?.features || []).map(f=> ({...f, properties: {...(f.properties||{}), type: 'forest_user'}}));
+          const all = [...demoFeats, ...apiFeats];
+          return all.length ? { type:'FeatureCollection', features: all } : null;
+        });
+      });
     }
     const UZ_REGIONS_URL = '/public/geo/uzbekistan_regions.geojson';
+    const LAND_PARCELS_API = '/api/v1/land-parcels';
+    const LAND_PARCELS_STATIC = '/public/geo/land_parcels.json';
     function loadLandParcels(){
       Promise.all([
         loadForestZones(),
-        fetch('/public/geo/land_parcels.json').then(r=>r.ok?r.json():Promise.reject()),
+        fetch(LAND_PARCELS_API).then(r=>r.ok?r.json():null).catch(()=>null).then(api=>{
+          return fetch(LAND_PARCELS_STATIC).then(r=>r.ok?r.json():null).catch(()=>null).then(static=>{
+            const apiFeats = api?.features || [];
+            const staticFeats = static?.features || [];
+            const staticIds = new Set(staticFeats.map(f=> (f.properties||{}).id));
+            const extraApi = apiFeats.filter(f=> !staticIds.has((f.properties||{}).id));
+            return { type:'FeatureCollection', features: [...staticFeats, ...extraApi] };
+          });
+        }),
         fetch(UZ_REGIONS_URL).then(r=>r.ok?r.json():Promise.resolve(null)).catch(()=>null)
       ]).then(([forestZones, geojson, regionsGeo])=>{
         landParcelsGeoJson = geojson;
@@ -1324,9 +1560,44 @@
         if (forestContourLayer) { map.removeLayer(forestContourLayer); forestContourLayer = null; }
         if (leaseAreasLayer) { map.removeLayer(leaseAreasLayer); leaseAreasLayer = null; }
         if (availableLandsLayer) { map.removeLayer(availableLandsLayer); availableLandsLayer = null; }
-        forestContourLayer = forestGeo ? L.geoJSON(forestGeo, { style: forestStyle }) : L.layerGroup();
+        forestContourLayer = forestGeo ? L.geoJSON(forestGeo, { style: forestStyle, onEachFeature: setupForestLayer }) : L.layerGroup();
         forestContourLayer.eachLayer(function(l){ l.on('add', function(){ const el = l.getElement?.(); if (el) el.classList.add('land-parcel-path','forest-contour'); }); });
         forestContourLayer.bringToBack();
+        function setupForestLayer(feature, layer){
+          layer._feature = feature;
+          layer._forestGeom = feature.geometry;
+          const props = feature.properties || {};
+          const isUserForest = props.type === 'forest_user' && props.id != null;
+          layer.on('add', function(){ const el = layer.getElement?.(); if (el) { el.style.pointerEvents = 'auto'; el.style.cursor = 'pointer'; } });
+          layer.on('click', function(e){
+            if (e) L.DomEvent.stopPropagation(e);
+            const menu = document.getElementById('forest-context-menu');
+            if (!menu) return;
+            const rect = map.getContainer().getBoundingClientRect();
+            const x = rect.left + (e.containerPoint?.x ?? 0), y = rect.top + (e.containerPoint?.y ?? 0);
+            menu.style.left = (x + 8) + 'px';
+            menu.style.top = (y + 8) + 'px';
+            const infoEl = document.getElementById('forest-ctx-info');
+            let areaHa = '—';
+            if (typeof turf !== 'undefined' && feature.geometry) {
+              try { areaHa = (turf.area(turf.feature(feature.geometry)) / 10000).toFixed(1) + ' ga'; } catch(_){}
+            }
+            const leaseCount = forestFeat && leaseExclusive.length ? leaseExclusive.filter(lf=>{
+              try { return turf.booleanIntersects(turf.feature(lf.geometry), turf.feature(feature.geometry)); } catch(_){ return false; }
+            }).length : 0;
+            const name = props.name || (props.id ? 'O\'rmon ' + props.id : 'O\'rmon hududi');
+            if (infoEl) infoEl.innerHTML = '<strong>' + (name.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</strong><br>Maydon: ' + areaHa + '<br>Ijara maydonlari: ' + leaseCount;
+            const delBtn = menu.querySelector('[data-action="delete-forest"]');
+            if (delBtn) delBtn.style.display = isUserForest ? 'flex' : 'none';
+            menu.classList.add('visible');
+            menu._activeForest = { feature, layer, geometry: feature.geometry, id: props.id, isUserForest };
+            if (window._closeForestContextMenu) window._closeForestContextMenu();
+            const closeMenu = function(){ menu.classList.remove('visible'); menu._activeForest = null; if (menu._closeDocListener) { document.removeEventListener('click', menu._closeDocListener); menu._closeDocListener = null; } window._closeForestContextMenu = null; };
+            window._closeForestContextMenu = closeMenu;
+            menu._closeDocListener = closeMenu;
+            setTimeout(function(){ document.addEventListener('click', closeMenu); }, 0);
+          });
+        }
         function setupLandLayer(layer,feature,baseStyle,isLease){
           layer._landType = isLease ? 'lease' : 'available';
           layer._feature = feature;
@@ -1447,6 +1718,10 @@
           applyLandSelection(null);
         });
         if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+        window._forestUnionGeom = forestUnionGeom || null;
+        if (window.__populateForestList) window.__populateForestList(forestGeo, leaseExclusive, availableClipped);
+        document.querySelector('#main-menu .nested-item[data-id="resources"]')?.classList.add('expanded');
+        document.querySelector('#main-menu .nested-item[data-id="forests"]')?.classList.add('expanded');
       }).catch(()=>{});
     }
     const savedMapMode = safeStorage.getItem('smart-forest-map-mode') || 'national';
@@ -2461,6 +2736,9 @@
       function setToggle(id, on){
         const el = document.getElementById(id);
         if (el) el.classList.toggle('on', !!on);
+        const mainId = 'main-' + id;
+        const mainEl = document.getElementById(mainId);
+        if (mainEl) mainEl.classList.toggle('on', !!on);
       }
       function updateAllToggles(){
         setToggle('toggle-eventMarkers', state.eventMarkers);
@@ -2472,9 +2750,9 @@
         setToggle('toggle-availableLands', state.availableLands);
         const groupEl = document.querySelector('.layer-panel-group[data-group="forestLands"]');
         if (groupEl) groupEl.classList.toggle('expanded', !!state.forestLandsExpanded);
-        document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
-        const basemapBtn = document.querySelector(`.layer-panel-item[data-basemap="${state.basemap}"] .layer-panel-toggle`);
-        if (basemapBtn) basemapBtn.classList.add('on');
+        document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle, #main-menu .nested-leaf.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
+        document.querySelector(`.layer-panel-item[data-basemap="${state.basemap}"] .layer-panel-toggle`)?.classList.add('on');
+        document.querySelector(`#main-menu .nested-leaf.basemap[data-basemap="${state.basemap}"] .layer-panel-toggle`)?.classList.add('on');
       }
 
       state.aiRisk = showRiskLayer;
@@ -2516,6 +2794,167 @@
       document.getElementById('toggle-forestLands')?.addEventListener('click', (e) => {
         e.stopPropagation();
         setForestLandsVisible(!state.forestLandsVisible);
+      });
+
+      function handleLayerToggle(layerId, on){
+        state[layerId] = on;
+        saveState(state);
+        if (layerId === 'forestLands') { setForestLandsVisible(on); return; }
+        if (layerId === 'eventMarkers') { state.eventMarkers = on; applyEventMarkers(on); }
+        else if (layerId === 'aiRisk') { state.aiRisk = on; applyAiRisk(on); }
+        else if (layerId === 'cameras') { state.cameras = on; applyCameras(on); }
+        else if (layerId === 'boundary') { state.boundary = on; applyBoundary(on); }
+        else if (layerId === 'leaseAreas') { state.leaseAreas = on; applyLeaseAreas(on); }
+        else if (layerId === 'availableLands') { state.availableLands = on; applyAvailableLands(on); }
+      }
+      document.querySelectorAll('#main-menu .nested-item').forEach(item => {
+        const head = item.querySelector('.nested-item-head');
+        if (head) head.addEventListener('click', function(e){ if (e.target.closest('.nested-item-expand')) { e.stopPropagation(); item.classList.toggle('expanded'); } });
+      });
+      document.querySelectorAll('#main-menu .nested-leaf[data-action="demo"]').forEach(el => { el.onclick = ()=> document.getElementById('demo-toggle')?.click(); });
+      document.querySelectorAll('#main-menu .nested-leaf[data-action="add-forest"]').forEach(el => { el.onclick = ()=> document.getElementById('add-forest-btn')?.click(); });
+      document.querySelectorAll('#main-menu .nested-leaf[data-layer]').forEach(item => {
+        const layerId = item.dataset.layer;
+        const toggleEl = item.querySelector('.layer-panel-toggle');
+        if (!toggleEl) return;
+        const doToggle = ()=>{ const on = !toggleEl.classList.contains('on'); toggleEl.classList.toggle('on', on); setToggle('toggle-' + layerId, on); handleLayerToggle(layerId, on); };
+        item.addEventListener('click', function(e){ e.stopPropagation(); doToggle(); });
+      });
+      document.querySelectorAll('#main-menu .nested-leaf.basemap').forEach(item => {
+        const basemap = item.dataset.basemap;
+        const toggleEl = item.querySelector('.layer-panel-toggle');
+        if (!toggleEl) return;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.basemap = basemap;
+          saveState(state);
+          applyBasemap(basemap);
+          document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle, #main-menu .nested-leaf.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
+          document.querySelector(`.layer-panel-item[data-basemap="${basemap}"] .layer-panel-toggle`)?.classList.add('on');
+          document.querySelector(`#main-menu .nested-leaf.basemap[data-basemap="${basemap}"] .layer-panel-toggle`)?.classList.add('on');
+        });
+      });
+
+      window.__populateForestList = function(forestGeo, leaseExclusive, availableClipped){
+        const container = document.getElementById('forest-list');
+        if (!container) return;
+        container.innerHTML = '';
+        const features = forestGeo?.features || [];
+        const leases = leaseExclusive || [];
+        const available = availableClipped || [];
+        const allParcels = [...leases, ...available];
+        features.forEach((f, idx)=>{
+          const name = (f.properties?.name || f.properties?.id) ? (f.properties.name || 'O\'rmon ' + (f.properties.id || (idx+1))) : 'O\'rmon ' + (idx+1);
+          const leasesInForest = allParcels.filter(p=>{
+            try { return turf.booleanIntersects(turf.feature(p.geometry), turf.feature(f.geometry)); } catch(_){ return false; }
+          });
+          const li = document.createElement('li');
+          li.className = 'nested-item';
+          li.dataset.forestIndex = String(idx);
+          li.innerHTML = '<div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg></span><span class="nested-item-label">' + (name.replace(/</g,'&lt;')) + '</span></div><ul class="nested-item-children"></ul>';
+          const childrenUl = li.querySelector('.nested-item-children');
+          leasesInForest.forEach((parcel, j)=>{
+            const pName = (parcel.properties?.name || parcel.properties?.id) || 'Ijara ' + (j+1);
+            const isLease = (parcel.properties?.lease_status || '') === 'leased';
+            const subLi = document.createElement('li');
+            subLi.className = 'nested-leaf';
+            subLi.textContent = (isLease ? '📋 ' : '🏞 ') + (pName.replace(/</g,'&lt;'));
+            subLi._parcel = parcel;
+            subLi._forest = f;
+            subLi.addEventListener('click', function(e){ e.stopPropagation(); window.__flyToGeometry(parcel.geometry); if (window.__showResourceModal) window.__showResourceModal('parcel', parcel, f); });
+            childrenUl.appendChild(subLi);
+          });
+          if (leasesInForest.length === 0) {
+            const empty = document.createElement('li');
+            empty.className = 'nested-leaf';
+            empty.style.color = 'rgba(0,0,0,.5)';
+            empty.style.fontSize = '11px';
+            empty.textContent = 'Ijara yo\'q';
+            childrenUl.appendChild(empty);
+          }
+          const head = li.querySelector('.nested-item-head');
+          head.querySelector('.nested-item-expand')?.addEventListener('click', function(e){ e.stopPropagation(); li.classList.toggle('expanded'); });
+          head.addEventListener('click', function(e){ if (!e.target.closest('.nested-item-expand')) { e.stopPropagation(); window.__flyToGeometry(f.geometry); if (window.__showResourceModal) window.__showResourceModal('forest', f, null); } });
+          container.appendChild(li);
+        });
+      };
+
+      window.__showResourceModal = function(type, data, parentForest){
+        const modal = document.getElementById('resource-modal');
+        const titleEl = document.getElementById('resource-modal-title');
+        const bodyEl = document.getElementById('resource-modal-body');
+        const footerEl = document.getElementById('resource-modal-footer');
+        if (!modal || !titleEl || !bodyEl) return;
+        if (type === 'forest') {
+          const props = data.properties || {};
+          const name = props.name || props.id || 'O\'rmon';
+          let areaHa = '—';
+          if (typeof turf !== 'undefined' && data.geometry) {
+            try { areaHa = (turf.area(turf.feature(data.geometry)) / 10000).toFixed(1) + ' ga'; } catch(_){}
+          }
+          titleEl.textContent = name;
+          bodyEl.innerHTML = '<div class="info-row"><span>Maydon</span><strong>' + areaHa + '</strong></div><div class="info-row"><span>Turi</span><strong>O\'rmon hududi</strong></div>';
+          footerEl.innerHTML = '';
+          const closeBtn = document.createElement('button');
+          closeBtn.className = 'add-lease-btn secondary';
+          closeBtn.textContent = 'Yopish';
+          closeBtn.onclick = function(){ modal.classList.remove('visible'); };
+          footerEl.appendChild(closeBtn);
+          const addLeaseBtn = document.createElement('button');
+          addLeaseBtn.className = 'add-lease-btn primary';
+          addLeaseBtn.textContent = 'Ijara hududi qo\'shish';
+          addLeaseBtn.onclick = function(){ modal.classList.remove('visible'); if (window.__startLeaseDrawForForest) window.__startLeaseDrawForForest({ feature: data, geometry: data.geometry, id: props.id, isUserForest: props.type === 'forest_user' }); };
+          footerEl.appendChild(addLeaseBtn);
+        } else if (type === 'parcel') {
+          const props = data.properties || {};
+          const name = props.name || props.id || 'Maydon';
+          const isLease = (props.lease_status || '') === 'leased';
+          let areaHa = '—';
+          if (typeof turf !== 'undefined' && data.geometry) {
+            try { areaHa = (turf.area(turf.feature(data.geometry)) / 10000).toFixed(1) + ' ga'; } catch(_){}
+          }
+          const rows = [['Maydon', areaHa], ['Status', isLease ? 'Ijara' : 'Bo\'sh'], ['Viloyat', props.region || '—'], ['Ijarachi', props.lease_holder || '—'], ['Shartnoma', props.contract_number || '—']];
+          titleEl.textContent = name;
+          bodyEl.innerHTML = rows.map(([l,v])=> '<div class="info-row"><span>' + (l.replace(/</g,'&lt;')) + '</span><strong>' + (String(v).replace(/</g,'&lt;')) + '</strong></div>').join('');
+          footerEl.innerHTML = '';
+          const closeBtn2 = document.createElement('button');
+          closeBtn2.className = 'add-lease-btn secondary';
+          closeBtn2.textContent = 'Yopish';
+          closeBtn2.onclick = function(){ modal.classList.remove('visible'); };
+          footerEl.appendChild(closeBtn2);
+        }
+        modal.classList.add('visible');
+        modal.onclick = function(e){ if (e.target === modal) modal.classList.remove('visible'); };
+      };
+
+      window.__flyToGeometry = function(geometry){
+        if (!geometry || typeof turf === 'undefined') return;
+        try {
+          const feat = turf.feature(geometry);
+          const bbox = turf.bbox(feat);
+          if (bbox && bbox.length === 4) {
+            const bounds = [[bbox[1], bbox[0]], [bbox[3], bbox[2]]];
+            map.flyToBounds(bounds, { padding: [50, 50], duration: 1.2, easeLinearity: 0.25 });
+          }
+        } catch(_){}
+      };
+
+      document.getElementById('forest-context-menu')?.addEventListener('click', function(e){
+        e.stopPropagation();
+        const btn = e.target.closest('[data-action]');
+        const menu = document.getElementById('forest-context-menu');
+        if (!btn || !menu?._activeForest) return;
+        const forest = menu._activeForest;
+        if (btn.dataset.action === 'add-lease') {
+          window._closeForestContextMenu?.();
+          window.__startLeaseDrawForForest?.(forest);
+        } else if (btn.dataset.action === 'delete-forest' && forest.isUserForest && forest.id) {
+          if (!confirm('O\'rmon hududini o\'chirishni xohlaysizmi?')) return;
+          window._closeForestContextMenu?.();
+          fetch('/api/v1/forest-areas/' + forest.id, { method: 'DELETE' })
+            .then(r=>{ if (r.ok && typeof loadLandParcels === 'function') loadLandParcels(); else alert('O\'chirish xatosi'); })
+            .catch(()=> alert('O\'chirish xatosi'));
+        }
       });
 
       document.querySelectorAll('.layer-panel-item[data-layer]').forEach(item => {
@@ -2578,6 +3017,284 @@
         state.collapsed = !panel.classList.toggle('collapsed');
         saveState(state);
       });
+
+      window.__setupAddForest = function setupAddForest(){
+        const addForestBtn = document.getElementById('add-forest-btn');
+        const addForestModal = document.getElementById('add-forest-modal');
+        const addForestForm = document.getElementById('add-forest-form');
+        const addForestCancel = document.getElementById('add-forest-cancel');
+        const addForestSave = document.getElementById('add-forest-save');
+        if (!addForestBtn || typeof L.Draw === 'undefined') return;
+        let drawnItemsForest = new L.FeatureGroup();
+        map.addLayer(drawnItemsForest);
+        let drawControlForest = null;
+        let pendingForestGeometry = null;
+        let isAddingForest = false;
+        addForestBtn.onclick = function(){
+          if (addForestBtn.disabled) return;
+          isAddingForest = true;
+          eventMarkersWasOn = state.eventMarkers;
+          if (state.eventMarkers) { state.eventMarkers = false; applyEventMarkers(false); }
+          pendingForestGeometry = null;
+          drawnItemsForest.clearLayers();
+          drawControlForest = new L.Control.Draw({
+            draw: { polygon: { allowIntersection: false, shapeOptions: { color: '#166534', weight: 2, fillColor: '#22c55e', fillOpacity: 0.4 }, guideLines: true, showArea: true, metric: true, repeatMode: false }, polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false },
+            edit: { featureGroup: drawnItemsForest, remove: false }
+          });
+          map.addControl(drawControlForest);
+          new L.Draw.Polygon(map, drawControlForest.options.draw.polygon).enable();
+          addForestBtn.disabled = true;
+        };
+        map.on(L.Draw.Event.CREATED, function onForestCreated(e){
+          if (!isAddingForest) return;
+          isAddingForest = false;
+          const layer = e.layer;
+          drawnItemsForest.addLayer(layer);
+          const geo = layer.toGeoJSON();
+          if (geo.geometry && geo.geometry.type === 'Polygon' && geo.geometry.coordinates?.[0]?.length >= 4) {
+            pendingForestGeometry = geo.geometry;
+            map.removeControl(drawControlForest);
+            drawControlForest = null;
+            addForestBtn.disabled = false;
+            addForestModal.classList.add('visible');
+            addForestForm.reset();
+            if (eventMarkersWasOn) { state.eventMarkers = true; applyEventMarkers(true); }
+          }
+        });
+        addForestCancel.onclick = ()=>{ addForestModal.classList.remove('visible'); pendingForestGeometry = null; drawnItemsForest.clearLayers(); addForestBtn.disabled = false; if (eventMarkersWasOn) { state.eventMarkers = true; applyEventMarkers(true); } };
+        addForestForm.onsubmit = function(ev){
+          ev.preventDefault();
+          if (!pendingForestGeometry) return;
+          addForestSave.disabled = true;
+          fetch('/api/v1/forest-areas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('forest-name').value.trim() || undefined, geometry: pendingForestGeometry }) })
+            .then(r=>{ if (!r.ok) throw new Error(); addForestModal.classList.remove('visible'); pendingForestGeometry = null; drawnItemsForest.clearLayers(); if (typeof loadLandParcels === 'function') loadLandParcels();  })
+            .catch(()=> alert('O\'rmon hududini saqlashda xatolik.'))
+            .finally(()=>{ addForestSave.disabled = false; });
+        };
+      };
+
+      let eventMarkersWasOn = false;
+      let drawMaskLayer = null;
+      window.__setupAddLease = function setupAddLease(){
+        if (typeof L.Draw === 'undefined') return;
+        let isAddingLease = false;
+        let drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        const drawControl = new L.Control.Draw({
+          draw: {
+            polygon: {
+              allowIntersection: false,
+              shapeOptions: { color: '#166534', weight: 2, fillColor: '#22c55e', fillOpacity: 0.4 },
+              guideLines: true,
+              showArea: true,
+              metric: true,
+              repeatMode: false
+            },
+            polyline: false,
+            circle: false,
+            rectangle: false,
+            marker: false,
+            circlemarker: false
+          },
+          edit: { featureGroup: drawnItems, remove: false }
+        });
+        let drawAreaTooltip = null;
+        let pendingGeometry = null;
+        let drawControlOnMap = false;
+        const addLeaseModal = document.getElementById('add-lease-modal');
+        const addLeaseForm = document.getElementById('add-lease-form');
+        const addLeaseCancel = document.getElementById('add-lease-cancel');
+        const addLeaseSave = document.getElementById('add-lease-save');
+        function updateDrawAreaTooltip(geo){
+          if (!geo || !geo.coordinates?.[0]?.length) return;
+          if (typeof turf === 'undefined' || typeof turf.area !== 'function') return;
+          try {
+            const poly = turf.polygon(geo.coordinates);
+            const areaM2 = turf.area(poly);
+            const areaHa = (areaM2 / 10000).toFixed(2);
+            const center = turf.centroid(poly);
+            if (!drawAreaTooltip) {
+              drawAreaTooltip = L.tooltip({ permanent: true, className: 'draw-area-tooltip', direction: 'center', offset: [0, 0] });
+            }
+            drawAreaTooltip.setContent(areaHa + ' ga').setLatLng([center.geometry.coordinates[1], center.geometry.coordinates[0]]);
+            if (!map.hasLayer(drawAreaTooltip)) drawAreaTooltip.addTo(map);
+          } catch(_){}
+        }
+        function removeDrawAreaTooltip(){
+          if (drawAreaTooltip && map.hasLayer(drawAreaTooltip)) map.removeLayer(drawAreaTooltip);
+        }
+        let eventMarkersWasOn = false;
+        function restoreEventMarkers(){
+          if (eventMarkersWasOn) { state.eventMarkers = true; applyEventMarkers(true); }
+          eventMarkersWasOn = false;
+        }
+        map.on(L.Draw.Event.DRAWVERTEX, function onDrawVertex(e){
+          const layers = e.layers;
+          if (layers && layers.getLayers && layers.getLayers().length >= 3) {
+            const markers = layers.getLayers();
+            const latlngs = markers.map(m=> m.getLatLng?.()).filter(Boolean);
+            if (latlngs.length >= 3) {
+              const first = latlngs[0];
+              const ring = [...latlngs.map(l=> [l.lng, l.lat]), [first.lng, first.lat]];
+              updateDrawAreaTooltip({ type: 'Polygon', coordinates: [ring] });
+            }
+          }
+        });
+        map.on(L.Draw.Event.DRAWSTOP, function onDrawStop(){
+          if (isAddingLease) { isAddingLease = false; removeDrawMask(); removeDrawAreaTooltip(); if (drawControl && drawControlOnMap) { map.removeControl(drawControl); drawControlOnMap = false; } restoreEventMarkers(); }
+        });
+        map.on(L.Draw.Event.CREATED, function onDrawCreated(e){
+          if (!isAddingLease) return;
+          isAddingLease = false;
+          removeDrawMask();
+          const layer = e.layer;
+          drawnItems.addLayer(layer);
+          let geo = layer.toGeoJSON();
+          if (geo.geometry && geo.geometry.type === 'Polygon' && geo.geometry.coordinates?.[0]?.length >= 4) {
+            const forestGeom = window._selectedForestGeom;
+            let geomToSave = geo.geometry;
+            if (forestGeom && typeof turf !== 'undefined' && turf.intersect) {
+              try {
+                const inter = turf.intersect(turf.featureCollection([turf.feature(forestGeom), turf.feature(geo.geometry)]));
+                if (inter?.geometry && (inter.geometry.type === 'Polygon' || inter.geometry.type === 'MultiPolygon')) {
+                  const ring = inter.geometry.type === 'Polygon' ? inter.geometry.coordinates?.[0] : inter.geometry.coordinates?.[0]?.[0];
+                  if (ring && ring.length >= 4) geomToSave = inter.geometry;
+                  else { alert('Belgilangan hudud o\'rmon chegarasidan tashqarida.'); return; }
+                } else { alert('Belgilangan hudud o\'rmon chegarasidan tashqarida.'); return; }
+              } catch(_){}
+            }
+            updateDrawAreaTooltip(geo.geometry);
+            pendingGeometry = geomToSave;
+            if (drawControlOnMap) { map.removeControl(drawControl); drawControlOnMap = false; }
+            addLeaseModal.classList.add('visible');
+            addLeaseForm.reset();
+          }
+        });
+        function removeDrawMask(){
+          if (drawMaskLayer && map.hasLayer(drawMaskLayer)) { map.removeLayer(drawMaskLayer); drawMaskLayer = null; }
+          map.off('mousedown', _leaseDrawBlocker);
+          map.off('click', _leaseDrawBlocker);
+          delete map._leaseDrawForestGeom;
+        }
+        function addDrawMask(forestGeom){
+          if (!forestGeom || typeof turf === 'undefined') return;
+          removeDrawMask();
+          try {
+            let holes = [];
+            if (forestGeom.type === 'Polygon' && forestGeom.coordinates?.[0]) {
+              const ring = forestGeom.coordinates[0];
+              if (ring.length >= 3) holes.push([...ring.slice(0,-1).reverse(), [ring[0][0], ring[0][1]]]);
+            } else if (forestGeom.type === 'MultiPolygon' && forestGeom.coordinates?.length) {
+              for (let i = 0; i < forestGeom.coordinates.length; i++) {
+                const ring = forestGeom.coordinates[i]?.[0];
+                if (ring && ring.length >= 3) holes.push([...ring.slice(0,-1).reverse(), [ring[0][0], ring[0][1]]]);
+              }
+            }
+            if (!holes.length) return;
+            const world = [[[-180,-85],[-180,85],[180,85],[180,-85],[-180,-85]], ...holes];
+            const maskGeo = { type: 'Polygon', coordinates: world };
+            const maskPane = map.getPane('drawMaskPane') || map.createPane('drawMaskPane');
+            maskPane.style.zIndex = 2000;
+            maskPane.style.pointerEvents = 'none';
+            drawMaskLayer = L.geoJSON({ type: 'Feature', geometry: maskGeo, properties: {} }, {
+              pane: 'drawMaskPane',
+              style: { fillColor: '#000', fillOpacity: 0.15, color: 'transparent', interactive: true },
+              interactive: true
+            });
+            drawMaskLayer.eachLayer(function(l){
+              const el = l.getElement?.();
+              if (el) { el.style.cursor = 'not-allowed'; el.style.pointerEvents = 'auto'; el.classList.add('draw-mask-overlay'); }
+              l.on('click mousedown pointerdown', function(ev){ if (ev?.originalEvent) { ev.originalEvent.stopImmediatePropagation(); ev.originalEvent.preventDefault(); } if (ev) L.DomEvent.stop(ev); });
+            });
+            drawMaskLayer.addTo(map);
+            map._leaseDrawForestGeom = forestGeom;
+          } catch(_){}
+        }
+        function _isPointInForest(latLng, geom){
+          if (!geom || typeof turf === 'undefined') return true;
+          try {
+            const pt = turf.point([latLng.lng, latLng.lat]);
+            if (geom.type === 'Polygon') return !!turf.booleanPointInPolygon(pt, turf.feature(geom));
+            if (geom.type === 'MultiPolygon') return !!turf.booleanPointInPolygon(pt, turf.feature(geom));
+          } catch(_){ return true; }
+          return true;
+        }
+        function _leaseDrawBlocker(e){
+          if (!isAddingLease || !map._leaseDrawForestGeom) return;
+          const t = e.originalEvent?.target;
+          if (t?.closest?.('.leaflet-draw-toolbar') || t?.closest?.('.leaflet-draw-actions')) return;
+          const latLng = map.containerPointToLatLng(e.containerPoint);
+          if (!_isPointInForest(latLng, map._leaseDrawForestGeom)) {
+            e.originalEvent.stopImmediatePropagation();
+            e.originalEvent.preventDefault();
+          }
+        }
+        window.__startLeaseDrawForForest = function(forest){
+          if (!forest?.geometry) return;
+          window._selectedForestGeom = forest.geometry;
+          isAddingLease = true;
+          pendingGeometry = null;
+          drawnItems.clearLayers();
+          eventMarkersWasOn = state.eventMarkers;
+          if (state.eventMarkers) { state.eventMarkers = false; applyEventMarkers(false); }
+          addDrawMask(forest.geometry);
+          map.on('mousedown', _leaseDrawBlocker, map);
+          map.on('click', _leaseDrawBlocker, map);
+          if (!drawControlOnMap) { map.addControl(drawControl); drawControlOnMap = true; }
+          new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+        };
+        addLeaseCancel.onclick = function(){
+          addLeaseModal.classList.remove('visible');
+          pendingGeometry = null;
+          drawnItems.clearLayers();
+          removeDrawAreaTooltip();
+          removeDrawMask();
+          if (drawControl && drawControlOnMap) { map.removeControl(drawControl); drawControlOnMap = false; }
+          restoreEventMarkers();
+        };
+        addLeaseForm.onsubmit = function(ev){
+          ev.preventDefault();
+          if (!pendingGeometry) return;
+          const name = document.getElementById('lease-name').value.trim();
+          const region = document.getElementById('lease-region').value;
+          if (!name || !region) return;
+          addLeaseSave.disabled = true;
+          fetch('/api/v1/land-parcels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name, region,
+              lease_holder: document.getElementById('lease-holder').value.trim() || undefined,
+              contract_number: document.getElementById('lease-contract').value.trim() || undefined,
+              contract_start: document.getElementById('lease-start').value || undefined,
+              contract_expiry: document.getElementById('lease-expiry').value || undefined,
+              geometry: pendingGeometry
+            })
+          }).then(r=>{
+            if (!r.ok) throw new Error('Saqlash xatosi');
+            addLeaseModal.classList.remove('visible');
+            pendingGeometry = null;
+            drawnItems.clearLayers();
+            removeDrawAreaTooltip();
+            restoreEventMarkers();
+            state.forestLandsVisible = true;
+            state.leaseAreas = true;
+            state.forestLandsExpanded = true;
+            saveState(state);
+            document.querySelector('.layer-panel-group[data-group="forestLands"]')?.classList.add('expanded');
+            setToggle('toggle-forestLands', true);
+            setToggle('toggle-leaseAreas', true);
+            setForestLandsVisible(true);
+            if (typeof loadLandParcels === 'function') loadLandParcels();
+            if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+          }).catch(()=>{
+            alert('Ijara hududini saqlashda xatolik. Server ishlayotganligini tekshiring.');
+            restoreEventMarkers();
+          }).finally(()=>{
+            addLeaseSave.disabled = false;
+          });
+        };
+      };
     })();
 
     function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
@@ -2660,11 +3377,14 @@
     if (introEl) {
       introEl.addEventListener('animationend', (e)=>{ if (e.animationName === 'introOverlay') introEl.remove(); });
     }
+
     map.whenReady(()=>{
       map.flyToBounds(UZB_BOUNDS, { padding: [24, 24], duration: 3.6, easeLinearity: 0.2 });
       loadRegions();
       loadInitial();
       loadLandParcels();
+      if (window.__setupAddForest) window.__setupAddForest();
+      if (window.__setupAddLease) window.__setupAddLease();
       if (showRiskLayer) {
         riskLastUpdate = 0;
         updateRiskLayer();
