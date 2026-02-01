@@ -5,11 +5,13 @@ import { AppController } from './app.controller';
 import { EventsModule } from './events/events.module';
 import { MqttModule } from './mqtt/mqtt.module';
 import { SensorSimulatorModule } from './sensor-simulator/sensor-simulator.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   controllers: [AppController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    TelegramModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/smart_forest',

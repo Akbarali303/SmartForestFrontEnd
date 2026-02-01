@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import mqtt, { MqttClient } from 'mqtt';
 import { EventsGateway } from '../events/events.gateway';
+import { TelegramService } from '../telegram/telegram.service';
 
 const TOPIC = 'forest/sensors/#';
 const DEDUPE_MAX = 10000;
@@ -55,6 +56,7 @@ export class MqttConsumerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly eventsGateway: EventsGateway,
+    private readonly telegram: TelegramService,
   ) {}
 
   async onModuleInit() {
@@ -166,6 +168,13 @@ export class MqttConsumerService implements OnModuleInit, OnModuleDestroy {
           severity: r.severity,
           createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
         });
+        this.telegram.sendFireAlert({
+          title: r.title,
+          severity: r.severity,
+          latitude: Number(r.latitude),
+          longitude: Number(r.longitude),
+          createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        }).catch(() => {});
       }
     } catch (err) {
       this.seen.delete(key);
