@@ -269,7 +269,7 @@
 
     :root{--navbar-height:52px}
     #layer-panel{
-      position:absolute;top:calc(var(--navbar-height) + 20px);left:12px;z-index:1000;
+      position:absolute;top:calc(var(--navbar-height) + 20px);right:12px;left:auto;z-index:1000;
       width:260px;background:rgba(255,255,255,.95);
       backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
       border:1px solid rgba(0,0,0,.1);
@@ -354,6 +354,61 @@
     .layer-panel-item.radio .layer-panel-toggle.on{background:rgba(34,197,94,.55);border-color:rgba(34,197,94,.7)}
     body.command-mode #layer-panel{display:none}
 
+    #main-menu{
+      position:absolute;top:calc(var(--navbar-height) + 20px);left:12px;z-index:1000;
+      width:280px;background:rgba(255,255,255,.95);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid rgba(0,0,0,.1);border-radius:8px;
+      box-shadow:0 2px 12px rgba(0,0,0,.08);
+      font-family:'Source Sans 3',system-ui,-apple-system,sans-serif;
+      overflow:hidden;
+    }
+    body.dark #main-menu,body.intel #main-menu{background:rgba(248,250,252,.92);border-color:rgba(255,255,255,.2);box-shadow:0 4px 24px rgba(0,0,0,.25)}
+    #main-menu .menu-section{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,.06)}
+    body.dark #main-menu .menu-section,body.intel #main-menu .menu-section{border-color:rgba(255,255,255,.08)}
+    #main-menu .menu-section:last-child{border-bottom:none}
+    #main-menu .menu-section-title{font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(0,0,0,.55);margin-bottom:10px;text-transform:uppercase}
+    body.dark #main-menu .menu-section-title,body.intel #main-menu .menu-section-title{color:rgba(255,255,255,.5)}
+    #main-menu .nested-menu{padding:10px 12px}
+    #main-menu .menu-item{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:4px;background:rgba(0,0,0,.03);border-radius:6px;cursor:pointer;transition:background .2s}
+    #main-menu .menu-item:hover{background:rgba(0,0,0,.06)}
+    #main-menu .menu-item:last-child{margin-bottom:0}
+    #main-menu .menu-item.expandable{padding-right:8px}
+    #main-menu .menu-item-expand{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.5);transition:transform .25s}
+    #main-menu .menu-item.expanded .menu-item-expand{transform:rotate(90deg)}
+    #main-menu .menu-item-children{margin-left:12px;padding-left:10px;border-left:1px solid rgba(0,0,0,.1);max-height:0;overflow:hidden;transition:max-height .3s}
+    #main-menu .menu-item.expanded .menu-item-children{max-height:800px}
+    #main-menu .menu-subitem{padding:8px 10px;margin:4px 0;background:rgba(0,0,0,.02);border-radius:4px;cursor:pointer;font-size:12px}
+    #main-menu .menu-subitem:hover{background:rgba(0,0,0,.05)}
+    #main-menu .nested-menu{list-style:none;margin:0;padding:0}
+    #main-menu .nested-item{display:block;margin:0}
+    #main-menu .nested-item-head{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;transition:background .2s}
+    #main-menu .nested-item-head:hover{background:rgba(0,0,0,.05)}
+    #main-menu .nested-item-expand{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.5);transition:transform .2s}
+    #main-menu .nested-item.expanded > .nested-item-head .nested-item-expand{transform:rotate(90deg)}
+    #main-menu .nested-item-children{margin-left:16px;padding-left:8px;border-left:1px solid rgba(0,0,0,.08);max-height:0;overflow:hidden;transition:max-height .35s ease}
+    #main-menu .nested-item.expanded > .nested-item-children{max-height:2000px}
+    #main-menu .nested-item-children .nested-item-children{margin-left:12px}
+    #main-menu .nested-leaf{display:flex;align-items:center;gap:8px;padding:6px 10px 6px 28px;cursor:pointer;border-radius:4px;font-size:12px;transition:background .2s}
+    #main-menu .nested-leaf:hover{background:rgba(0,0,0,.04)}
+    #main-menu .nested-leaf .layer-panel-toggle{order:1;margin-left:auto;flex-shrink:0}
+    #main-menu .nested-leaf.basemap .layer-panel-toggle{width:18px;height:18px;border-radius:50%;border:2px solid rgba(0,0,0,.25)}
+    #main-menu .nested-leaf.basemap .layer-panel-toggle::after{display:none}
+    #main-menu .nested-leaf.basemap .layer-panel-toggle.on{background:rgba(34,197,94,.55);border-color:rgba(34,197,94,.7)}
+    #main-menu .menu-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;background:#166534;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;justify-content:center;transition:background .2s}
+    #main-menu .menu-btn:hover{background:#14532d}
+    body.command-mode #main-menu{display:none}
+    .resource-modal{display:none;position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+    .resource-modal.visible{display:flex}
+    .resource-modal-dialog{width:min(420px,94vw);max-height:85vh;overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);font-family:'Source Sans 3',system-ui,sans-serif}
+    body.dark .resource-modal-dialog,body.intel .resource-modal-dialog{background:rgba(18,22,26,.98)}
+    .resource-modal-header{padding:16px 20px;background:linear-gradient(135deg,#166534 0%,#14532d 100%);color:#fff;font-weight:700;font-size:16px;border-radius:12px 12px 0 0}
+    .resource-modal-body{padding:20px;font-size:13px;line-height:1.6}
+    .resource-modal-body .info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.08)}
+    .resource-modal-body .info-row:last-child{border-bottom:none}
+    .resource-modal-footer{padding:16px 20px;border-top:1px solid rgba(0,0,0,.08);display:flex;gap:10px;flex-wrap:wrap}
+    body.dark .resource-modal-footer,body.intel .resource-modal-footer{border-color:rgba(255,255,255,.08)}
+
     .layer-panel-group{margin-bottom:4px}
     .layer-panel-group-header{
       display:flex;align-items:center;gap:8px;
@@ -398,7 +453,8 @@
     body.dark .leaflet-control-zoom a,body.intel .leaflet-control-zoom a{color:#fff !important;background:transparent !important}
     body.dark .leaflet-control-zoom a:hover,body.intel .leaflet-control-zoom a:hover{background:rgba(255,255,255,.12) !important;color:#fff !important}
     @media (max-width:640px){
-      #layer-panel{top:calc(var(--navbar-height) + 12px);left:8px}
+      #layer-panel{top:calc(var(--navbar-height) + 12px);right:8px;left:auto}
+      #main-menu{top:calc(var(--navbar-height) + 12px);left:8px;width:260px}
       .leaflet-bottom.leaflet-left{left:8px !important;bottom:16px !important}
     }
 
@@ -635,6 +691,47 @@
     </div>
   </div>
     <div class="map-skeleton-wrap">
+      <div id="main-menu">
+        <ul class="nested-menu">
+          <li class="nested-item" data-id="commands">
+            <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span><span class="nested-item-label">Buyruqlar</span></div>
+            <ul class="nested-item-children"><li class="nested-leaf" data-action="demo">DEMO rejim</li></ul>
+          </li>
+          <li class="nested-item" data-id="resources">
+            <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg></span><span class="nested-item-label">Mavjud resurslar</span></div>
+            <ul class="nested-item-children">
+              <li class="nested-item" data-id="forests">
+                <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg></span><span class="nested-item-label">O'rmon hududlari</span></div>
+                <ul class="nested-item-children" id="forest-list"></ul>
+              </li>
+              <li class="nested-leaf menu-btn" data-action="add-forest"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>O'rmon hududini qo'shish</li>
+            </ul>
+          </li>
+          <li class="nested-item" data-id="view">
+            <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></span><span class="nested-item-label">Ko'rinish</span></div>
+            <ul class="nested-item-children">
+              <li class="nested-item" data-id="layers">
+                <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-label">Qatlamlar</span></div>
+                <ul class="nested-item-children">
+                  <li class="nested-leaf" data-layer="eventMarkers">Hodisa belgilari<span class="layer-panel-toggle" id="main-toggle-eventMarkers"></span></li>
+                  <li class="nested-leaf" data-layer="aiRisk">AI xavf<span class="layer-panel-toggle" id="main-toggle-aiRisk"></span></li>
+                  <li class="nested-leaf" data-layer="cameras">Kamerlar<span class="layer-panel-toggle" id="main-toggle-cameras"></span></li>
+                  <li class="nested-leaf" data-layer="boundary">O'zbekiston chegarasi<span class="layer-panel-toggle" id="main-toggle-boundary"></span></li>
+                  <li class="nested-leaf" data-layer="forestLands">O'rmon yerlari<span class="layer-panel-toggle" id="main-toggle-forestLands"></span></li>
+                </ul>
+              </li>
+              <li class="nested-item" data-id="basemap">
+                <div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-label">Xarita turi</span></div>
+                <ul class="nested-item-children">
+                  <li class="nested-leaf basemap" data-basemap="satellite">Sun'iy yo'ldosh<span class="layer-panel-toggle" id="main-basemap-satellite"></span></li>
+                  <li class="nested-leaf basemap" data-basemap="hybrid">Gibrid<span class="layer-panel-toggle" id="main-basemap-hybrid"></span></li>
+                  <li class="nested-leaf basemap" data-basemap="topographic">Topografik<span class="layer-panel-toggle" id="main-basemap-topographic"></span></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
       <div id="layer-panel">
         <div id="layer-panel-header">
           <span class="layer-panel-title">Qatlamlar paneli</span>
@@ -757,6 +854,13 @@
     <div class="stats-row"><span>Yong'inlar</span><span>0</span></div>
     <div class="stats-row"><span>Noqonuniy daraxt kesish</span><span>0</span></div>
     <div class="stats-hint">Filterni tozalash uchun viloyatni qayta bosing</div>
+  </div>
+  <div id="resource-modal" class="resource-modal">
+    <div class="resource-modal-dialog">
+      <div class="resource-modal-header" id="resource-modal-title">—</div>
+      <div class="resource-modal-body" id="resource-modal-body"></div>
+      <div class="resource-modal-footer" id="resource-modal-footer"></div>
+    </div>
   </div>
   <div id="forest-context-menu" class="forest-context-menu">
     <button type="button" class="ctx-btn" data-action="add-lease"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ijara hududi qo'shish</button>
@@ -974,12 +1078,12 @@
     }
     if (!map.getPane('forestPane')) {
       map.createPane('forestPane');
-      map.getPane('forestPane').style.zIndex = 310;
+      map.getPane('forestPane').style.zIndex = 300;
       map.getPane('forestPane').style.pointerEvents = 'auto';
     }
     if (!map.getPane('landParcelsPane')) {
       map.createPane('landParcelsPane');
-      map.getPane('landParcelsPane').style.zIndex = 450;
+      map.getPane('landParcelsPane').style.zIndex = 460;
       map.getPane('landParcelsPane').style.pointerEvents = 'auto';
     }
 
@@ -1615,6 +1719,9 @@
         });
         if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
         window._forestUnionGeom = forestUnionGeom || null;
+        if (window.__populateForestList) window.__populateForestList(forestGeo, leaseExclusive, availableClipped);
+        document.querySelector('#main-menu .nested-item[data-id="resources"]')?.classList.add('expanded');
+        document.querySelector('#main-menu .nested-item[data-id="forests"]')?.classList.add('expanded');
       }).catch(()=>{});
     }
     const savedMapMode = safeStorage.getItem('smart-forest-map-mode') || 'national';
@@ -2629,6 +2736,9 @@
       function setToggle(id, on){
         const el = document.getElementById(id);
         if (el) el.classList.toggle('on', !!on);
+        const mainId = 'main-' + id;
+        const mainEl = document.getElementById(mainId);
+        if (mainEl) mainEl.classList.toggle('on', !!on);
       }
       function updateAllToggles(){
         setToggle('toggle-eventMarkers', state.eventMarkers);
@@ -2640,9 +2750,9 @@
         setToggle('toggle-availableLands', state.availableLands);
         const groupEl = document.querySelector('.layer-panel-group[data-group="forestLands"]');
         if (groupEl) groupEl.classList.toggle('expanded', !!state.forestLandsExpanded);
-        document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
-        const basemapBtn = document.querySelector(`.layer-panel-item[data-basemap="${state.basemap}"] .layer-panel-toggle`);
-        if (basemapBtn) basemapBtn.classList.add('on');
+        document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle, #main-menu .nested-leaf.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
+        document.querySelector(`.layer-panel-item[data-basemap="${state.basemap}"] .layer-panel-toggle`)?.classList.add('on');
+        document.querySelector(`#main-menu .nested-leaf.basemap[data-basemap="${state.basemap}"] .layer-panel-toggle`)?.classList.add('on');
       }
 
       state.aiRisk = showRiskLayer;
@@ -2685,6 +2795,149 @@
         e.stopPropagation();
         setForestLandsVisible(!state.forestLandsVisible);
       });
+
+      function handleLayerToggle(layerId, on){
+        state[layerId] = on;
+        saveState(state);
+        if (layerId === 'forestLands') { setForestLandsVisible(on); return; }
+        if (layerId === 'eventMarkers') { state.eventMarkers = on; applyEventMarkers(on); }
+        else if (layerId === 'aiRisk') { state.aiRisk = on; applyAiRisk(on); }
+        else if (layerId === 'cameras') { state.cameras = on; applyCameras(on); }
+        else if (layerId === 'boundary') { state.boundary = on; applyBoundary(on); }
+        else if (layerId === 'leaseAreas') { state.leaseAreas = on; applyLeaseAreas(on); }
+        else if (layerId === 'availableLands') { state.availableLands = on; applyAvailableLands(on); }
+      }
+      document.querySelectorAll('#main-menu .nested-item').forEach(item => {
+        const head = item.querySelector('.nested-item-head');
+        if (head) head.addEventListener('click', function(e){ if (e.target.closest('.nested-item-expand')) { e.stopPropagation(); item.classList.toggle('expanded'); } });
+      });
+      document.querySelectorAll('#main-menu .nested-leaf[data-action="demo"]').forEach(el => { el.onclick = ()=> document.getElementById('demo-toggle')?.click(); });
+      document.querySelectorAll('#main-menu .nested-leaf[data-action="add-forest"]').forEach(el => { el.onclick = ()=> document.getElementById('add-forest-btn')?.click(); });
+      document.querySelectorAll('#main-menu .nested-leaf[data-layer]').forEach(item => {
+        const layerId = item.dataset.layer;
+        const toggleEl = item.querySelector('.layer-panel-toggle');
+        if (!toggleEl) return;
+        const doToggle = ()=>{ const on = !toggleEl.classList.contains('on'); toggleEl.classList.toggle('on', on); setToggle('toggle-' + layerId, on); handleLayerToggle(layerId, on); };
+        item.addEventListener('click', function(e){ e.stopPropagation(); doToggle(); });
+      });
+      document.querySelectorAll('#main-menu .nested-leaf.basemap').forEach(item => {
+        const basemap = item.dataset.basemap;
+        const toggleEl = item.querySelector('.layer-panel-toggle');
+        if (!toggleEl) return;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.basemap = basemap;
+          saveState(state);
+          applyBasemap(basemap);
+          document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle, #main-menu .nested-leaf.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
+          document.querySelector(`.layer-panel-item[data-basemap="${basemap}"] .layer-panel-toggle`)?.classList.add('on');
+          document.querySelector(`#main-menu .nested-leaf.basemap[data-basemap="${basemap}"] .layer-panel-toggle`)?.classList.add('on');
+        });
+      });
+
+      window.__populateForestList = function(forestGeo, leaseExclusive, availableClipped){
+        const container = document.getElementById('forest-list');
+        if (!container) return;
+        container.innerHTML = '';
+        const features = forestGeo?.features || [];
+        const leases = leaseExclusive || [];
+        const available = availableClipped || [];
+        const allParcels = [...leases, ...available];
+        features.forEach((f, idx)=>{
+          const name = (f.properties?.name || f.properties?.id) ? (f.properties.name || 'O\'rmon ' + (f.properties.id || (idx+1))) : 'O\'rmon ' + (idx+1);
+          const leasesInForest = allParcels.filter(p=>{
+            try { return turf.booleanIntersects(turf.feature(p.geometry), turf.feature(f.geometry)); } catch(_){ return false; }
+          });
+          const li = document.createElement('li');
+          li.className = 'nested-item';
+          li.dataset.forestIndex = String(idx);
+          li.innerHTML = '<div class="nested-item-head"><span class="nested-item-expand"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></span><span class="nested-item-icon"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg></span><span class="nested-item-label">' + (name.replace(/</g,'&lt;')) + '</span></div><ul class="nested-item-children"></ul>';
+          const childrenUl = li.querySelector('.nested-item-children');
+          leasesInForest.forEach((parcel, j)=>{
+            const pName = (parcel.properties?.name || parcel.properties?.id) || 'Ijara ' + (j+1);
+            const isLease = (parcel.properties?.lease_status || '') === 'leased';
+            const subLi = document.createElement('li');
+            subLi.className = 'nested-leaf';
+            subLi.textContent = (isLease ? '📋 ' : '🏞 ') + (pName.replace(/</g,'&lt;'));
+            subLi._parcel = parcel;
+            subLi._forest = f;
+            subLi.addEventListener('click', function(e){ e.stopPropagation(); window.__flyToGeometry(parcel.geometry); if (window.__showResourceModal) window.__showResourceModal('parcel', parcel, f); });
+            childrenUl.appendChild(subLi);
+          });
+          if (leasesInForest.length === 0) {
+            const empty = document.createElement('li');
+            empty.className = 'nested-leaf';
+            empty.style.color = 'rgba(0,0,0,.5)';
+            empty.style.fontSize = '11px';
+            empty.textContent = 'Ijara yo\'q';
+            childrenUl.appendChild(empty);
+          }
+          const head = li.querySelector('.nested-item-head');
+          head.querySelector('.nested-item-expand')?.addEventListener('click', function(e){ e.stopPropagation(); li.classList.toggle('expanded'); });
+          head.addEventListener('click', function(e){ if (!e.target.closest('.nested-item-expand')) { e.stopPropagation(); window.__flyToGeometry(f.geometry); if (window.__showResourceModal) window.__showResourceModal('forest', f, null); } });
+          container.appendChild(li);
+        });
+      };
+
+      window.__showResourceModal = function(type, data, parentForest){
+        const modal = document.getElementById('resource-modal');
+        const titleEl = document.getElementById('resource-modal-title');
+        const bodyEl = document.getElementById('resource-modal-body');
+        const footerEl = document.getElementById('resource-modal-footer');
+        if (!modal || !titleEl || !bodyEl) return;
+        if (type === 'forest') {
+          const props = data.properties || {};
+          const name = props.name || props.id || 'O\'rmon';
+          let areaHa = '—';
+          if (typeof turf !== 'undefined' && data.geometry) {
+            try { areaHa = (turf.area(turf.feature(data.geometry)) / 10000).toFixed(1) + ' ga'; } catch(_){}
+          }
+          titleEl.textContent = name;
+          bodyEl.innerHTML = '<div class="info-row"><span>Maydon</span><strong>' + areaHa + '</strong></div><div class="info-row"><span>Turi</span><strong>O\'rmon hududi</strong></div>';
+          footerEl.innerHTML = '';
+          const closeBtn = document.createElement('button');
+          closeBtn.className = 'add-lease-btn secondary';
+          closeBtn.textContent = 'Yopish';
+          closeBtn.onclick = function(){ modal.classList.remove('visible'); };
+          footerEl.appendChild(closeBtn);
+          const addLeaseBtn = document.createElement('button');
+          addLeaseBtn.className = 'add-lease-btn primary';
+          addLeaseBtn.textContent = 'Ijara hududi qo\'shish';
+          addLeaseBtn.onclick = function(){ modal.classList.remove('visible'); if (window.__startLeaseDrawForForest) window.__startLeaseDrawForForest({ feature: data, geometry: data.geometry, id: props.id, isUserForest: props.type === 'forest_user' }); };
+          footerEl.appendChild(addLeaseBtn);
+        } else if (type === 'parcel') {
+          const props = data.properties || {};
+          const name = props.name || props.id || 'Maydon';
+          const isLease = (props.lease_status || '') === 'leased';
+          let areaHa = '—';
+          if (typeof turf !== 'undefined' && data.geometry) {
+            try { areaHa = (turf.area(turf.feature(data.geometry)) / 10000).toFixed(1) + ' ga'; } catch(_){}
+          }
+          const rows = [['Maydon', areaHa], ['Status', isLease ? 'Ijara' : 'Bo\'sh'], ['Viloyat', props.region || '—'], ['Ijarachi', props.lease_holder || '—'], ['Shartnoma', props.contract_number || '—']];
+          titleEl.textContent = name;
+          bodyEl.innerHTML = rows.map(([l,v])=> '<div class="info-row"><span>' + (l.replace(/</g,'&lt;')) + '</span><strong>' + (String(v).replace(/</g,'&lt;')) + '</strong></div>').join('');
+          footerEl.innerHTML = '';
+          const closeBtn2 = document.createElement('button');
+          closeBtn2.className = 'add-lease-btn secondary';
+          closeBtn2.textContent = 'Yopish';
+          closeBtn2.onclick = function(){ modal.classList.remove('visible'); };
+          footerEl.appendChild(closeBtn2);
+        }
+        modal.classList.add('visible');
+        modal.onclick = function(e){ if (e.target === modal) modal.classList.remove('visible'); };
+      };
+
+      window.__flyToGeometry = function(geometry){
+        if (!geometry || typeof turf === 'undefined') return;
+        try {
+          const feat = turf.feature(geometry);
+          const bbox = turf.bbox(feat);
+          if (bbox && bbox.length === 4) {
+            const bounds = [[bbox[1], bbox[0]], [bbox[3], bbox[2]]];
+            map.flyToBounds(bounds, { padding: [50, 50], duration: 1.2, easeLinearity: 0.25 });
+          }
+        } catch(_){}
+      };
 
       document.getElementById('forest-context-menu')?.addEventListener('click', function(e){
         e.stopPropagation();
