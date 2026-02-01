@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { EventsGateway } from '../events/events.gateway';
+import { TelegramService } from '../telegram/telegram.service';
 
 // Realistic: common events more frequent
 const TITLES: Array<{ name: string; weight: number }> = [
@@ -38,6 +39,7 @@ export class SensorSimulatorService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly eventsGateway: EventsGateway,
+    private readonly telegram: TelegramService,
   ) {}
 
   onModuleInit() {
@@ -88,6 +90,13 @@ export class SensorSimulatorService implements OnModuleInit, OnModuleDestroy {
           severity: r.severity,
           createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
         });
+        this.telegram.sendFireAlert({
+          title: r.title,
+          severity: r.severity,
+          latitude: Number(r.latitude),
+          longitude: Number(r.longitude),
+          createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        }).catch(() => {});
       }
       this.logger.debug(`Simulated: ${title} @ ${lat.toFixed(4)}, ${lng.toFixed(4)} [${severity}]`);
     } catch (err) {
