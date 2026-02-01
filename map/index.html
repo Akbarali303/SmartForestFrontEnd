@@ -1,0 +1,2678 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart Forest — Hodisalar</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322c55e' stroke-width='2'><path d='M12 2L2 7l10 5 10-5-10-5z'/><path d='M2 17l10 5 10-5'/><path d='M2 12l10 5 10-5'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+    #intro-overlay{
+      position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:linear-gradient(180deg,rgba(12,16,20,.97) 0%,rgba(8,12,16,.98) 100%);
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      font-family:'Source Sans 3',system-ui,-apple-system,sans-serif;
+      animation:introOverlay 3.7s ease-out forwards;
+      pointer-events:none;will-change:opacity;
+    }
+    @keyframes introOverlay{
+      0%{opacity:0}
+      19%{opacity:1}
+      73%{opacity:1}
+      100%{opacity:0}
+    }
+    #intro-overlay .intro-title{
+      font-size:clamp(2.5rem,6vw,4rem);font-weight:700;letter-spacing:.02em;color:rgba(255,255,255,.98);
+      text-transform:uppercase;margin-bottom:12px;position:relative;overflow:hidden;
+    }
+    #intro-overlay .intro-title::after{
+      content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.04) 50%,transparent 100%);
+      animation:introShine 1.8s ease-in-out .9s forwards;opacity:0;
+    }
+    @keyframes introShine{0%{opacity:0;transform:translateX(-80%)}50%{opacity:1;transform:translateX(80%)}100%{opacity:0;transform:translateX(80%)}}
+    #intro-overlay .intro-subtitle{
+      font-size:clamp(0.7rem,1.5vw,0.9rem);font-weight:500;letter-spacing:.35em;color:rgba(255,255,255,.65);
+      text-transform:uppercase;margin-bottom:6px;
+    }
+    #intro-overlay .intro-org{
+      font-size:clamp(0.6rem,1.2vw,0.75rem);font-weight:400;letter-spacing:.2em;color:rgba(255,255,255,.45);
+    }
+    #intro-overlay .intro-status{
+      position:absolute;bottom:28px;left:0;right:0;text-align:center;
+      font-size:11px;font-weight:500;letter-spacing:.18em;color:rgba(255,255,255,.5);
+      font-family:'JetBrains Mono','SF Mono',monospace;
+    }
+    #app{position:relative;height:100vh;width:100%;overflow:hidden;display:flex;flex-direction:column}
+    #map{height:100%;width:100%;background:#e8ecef;position:relative}
+    body:not(.dark):not(.intel) .leaflet-tile-pane{filter:saturate(0.82) brightness(1.02)}
+    .leaflet-tile-pane{transition:opacity .25s ease}
+    body.intel .leaflet-tile-pane{filter:contrast(1.05) saturate(0.9)}
+    #geo-focus-overlay{position:absolute;inset:0;pointer-events:none;z-index:250}
+    body.dark #geo-focus-overlay{backdrop-filter:blur(2px) brightness(0.5);-webkit-backdrop-filter:blur(2px) brightness(0.5)}
+    body:not(.dark) #geo-focus-overlay{backdrop-filter:blur(1px) saturate(0.7) brightness(0.95);-webkit-backdrop-filter:blur(1px) saturate(0.7) brightness(0.95)}
+    #cmd-left-panel,#cmd-right-panel{display:none}
+    #badge{position:absolute;top:72px;right:12px;z-index:1000;background:rgba(255,255,255,.96);padding:8px 16px;border-radius:6px;font:14px sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.06);transition:transform .2s;color:#1a1f22}
+    #badge.updated{animation:badgePulse .4s ease}
+    @keyframes badgePulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+    #badge b{color:#166534;font-size:16px}
+    .marker-dot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .2s ease;transform-origin:center center}
+    #map.zoom-out .leaflet-marker-icon .marker-dot{transform:scale(0.85)}
+    #map.zoom-mid .leaflet-marker-icon .marker-dot{transform:scale(0.95)}
+    #map.zoom-in .leaflet-marker-icon .marker-dot{transform:scale(1)}
+    .marker-dot.critical{box-shadow:0 2px 6px rgba(0,0,0,.3),0 0 0 2px rgba(139,74,69,.4)}
+    .marker-dot.latest{width:26px;height:26px;border:2.5px solid #fff;background:#dc2626 !important;box-shadow:0 0 8px 2px rgba(234,88,12,.8),0 0 20px 6px rgba(220,38,38,.6),0 0 40px 12px rgba(220,38,38,.4);animation:latestBeacon 1.8s ease-in-out infinite}
+    .marker-dot.new-event-pulse{animation:newEventPulse 1s ease-in-out 4}
+    @keyframes newEventPulse{0%,100%{box-shadow:0 2px 6px rgba(0,0,0,.3),0 0 0 0 rgba(220,38,38,.5)}50%{box-shadow:0 0 14px 6px rgba(220,38,38,.7),0 0 28px 10px rgba(234,88,12,.4),0 2px 6px rgba(0,0,0,.3)}}
+    #map.zoom-out .leaflet-marker-icon .marker-dot.latest{transform:scale(0.85)}
+    #map.zoom-mid .leaflet-marker-icon .marker-dot.latest{transform:scale(0.95)}
+    #map.zoom-in .leaflet-marker-icon .marker-dot.latest{transform:scale(1)}
+    @keyframes latestBeacon{0%,100%{box-shadow:0 0 8px 2px rgba(234,88,12,.8),0 0 20px 6px rgba(220,38,38,.6),0 0 40px 12px rgba(220,38,38,.4)}50%{box-shadow:0 0 16px 4px rgba(234,88,12,.95),0 0 32px 12px rgba(220,38,38,.7),0 0 56px 20px rgba(220,38,38,.5)}}
+    @keyframes popIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.25)}100%{transform:scale(1);opacity:1}}
+    .leaflet-popup-content-wrapper{background:rgba(255,255,255,.98);border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.12)}
+    .leaflet-popup-content{margin:14px 18px;min-width:200px}
+    .popup-title{font-weight:600;font-size:15px;margin-bottom:8px;color:#1a1f22;font-family:'Source Sans 3',system-ui,sans-serif}
+    .popup-severity{padding:4px 10px;border-radius:6px;display:inline-block;font-size:12px;font-weight:500;margin-bottom:6px;font-family:'Source Sans 3',system-ui,sans-serif}
+    .popup-severity.low{background:#dcfce7;color:#166534}
+    .popup-severity.medium{background:#fef9c3;color:#854d0e}
+    .popup-severity.high{background:#ffedd5;color:#c2410c}
+    .popup-severity.critical{background:#fee2e2;color:#b91c1c}
+    .popup-latest-badge{font-size:10px;font-weight:700;letter-spacing:.12em;color:#dc2626;margin-bottom:8px;padding:4px 8px;background:rgba(220,38,38,.12);border-radius:4px}
+    .popup-time{font-size:12px;color:#6b7280;margin-top:8px;font-family:'Source Sans 3',system-ui,sans-serif}
+    .popup-coords{font-size:11px;color:#6b7280;margin-top:6px;font-family:'JetBrains Mono',monospace}
+    .land-popup{min-width:260px;max-width:320px;font-family:'Source Sans 3',system-ui,-apple-system,sans-serif;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);overflow:hidden}
+    .land-popup-header{padding:16px;background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-bottom:1px solid rgba(34,197,94,.2)}
+    .land-popup-title{font-size:16px;font-weight:700;color:#166534;letter-spacing:.02em;margin-bottom:4px}
+    .land-popup-badge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.1em;padding:4px 10px;border-radius:6px;margin-top:6px}
+    .land-popup-badge.active{background:#22c55e;color:#fff}
+    .land-popup-badge.free{background:#84cc16;color:#fff}
+    .land-popup-badge.expired{background:#ef4444;color:#fff}
+    .land-popup-body{padding:14px 16px}
+    .land-popup-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;font-size:13px;border-bottom:1px solid rgba(0,0,0,.05);gap:12px}
+    .land-popup-row:last-child{border-bottom:none}
+    .land-popup-row span{color:#6b7280;font-size:12px;flex-shrink:0}
+    .land-popup-row strong{color:#1a1f22;text-align:right}
+    .land-popup-footer{padding:12px 16px;border-top:1px solid rgba(0,0,0,.06)}
+    .land-popup-btn{display:block;width:100%;padding:10px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:background .2s,color .2s}
+    .land-popup-btn.lease{background:#22c55e;color:#fff}
+    .land-popup-btn.lease:hover{background:#16a34a}
+    .land-popup-btn.active{background:#e5e7eb;color:#374151;cursor:default}
+    .land-parcel-tooltip.leaflet-tooltip{font-family:'Source Sans 3',system-ui,sans-serif;font-size:12px;font-weight:600;color:#0f766e;background:rgba(255,255,255,.97);border:1px solid rgba(15,118,110,.4);border-radius:6px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.1);white-space:nowrap}
+    path.land-parcel-path{transition:fill-opacity .35s ease,stroke .3s ease,stroke-width .25s ease,filter .25s ease,opacity .4s ease;animation:landParcelFadeIn .5s ease forwards;stroke-linejoin:round;stroke-linecap:round;pointer-events:auto}
+    path.land-parcel-path.forest-contour{pointer-events:none}
+    @keyframes landParcelFadeIn{0%{opacity:0}100%{opacity:1}}
+    path.land-parcel-path.selected{filter:drop-shadow(0 0 10px rgba(34,197,94,.55))}
+    path.land-parcel-path.selected.available-selected{filter:drop-shadow(0 0 10px rgba(234,88,12,.5))}
+    body.dark .land-popup,body.intel .land-popup{background:rgba(18,22,26,.98)}
+    body.dark .land-popup-header,body.intel .land-popup-header{background:linear-gradient(135deg,rgba(34,197,94,.15) 0%,rgba(34,197,94,.08) 100%);border-bottom-color:rgba(34,197,94,.25)}
+    body.dark .land-popup-title,body.intel .land-popup-title{color:#6b9a75}
+    body.dark .land-popup-row span,body.intel .land-popup-row span{color:rgba(255,255,255,.5)}
+    body.dark .land-popup-row strong,body.intel .land-popup-row strong{color:rgba(255,255,255,.95)}
+    body.dark .land-popup-row,body.intel .land-popup-row{border-bottom-color:rgba(255,255,255,.08)}
+    body.dark .land-popup-footer,body.intel .land-popup-footer{border-top-color:rgba(255,255,255,.08)}
+
+    #dark-toggle{display:none}
+    #layer-toggle{position:absolute;top:72px;left:12px;z-index:1000;background:rgba(255,255,255,.96);color:#1a1f22;border:1px solid rgba(0,0,0,.08);padding:8px 14px;border-radius:6px;font:13px sans-serif;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:background .2s,color .2s}
+    #layer-toggle,#risk-toggle,#cameras-toggle{display:none}
+    #layer-toggle:hover{background:rgba(248,250,252,.98)}
+
+    body.dark #map,body.intel #map{background:#0a0c0d}
+    body.dark #badge,body.intel #badge{background:rgba(18,22,26,.95);color:rgba(255,255,255,.9)}
+    body.dark #badge b,body.intel #badge b{color:#6b9a75}
+    body.dark #badge span,body.intel #badge span{color:#a3a3a3}
+    #badge .skeleton-dot{animation:skeletonPulse 1.4s ease-in-out infinite}
+
+    #reconnecting-indicator{position:absolute;top:72px;right:12px;z-index:1001;padding:6px 12px;border-radius:6px;
+      font:12px 'JetBrains Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.9);
+      background:rgba(120,80,60,.92);border:1px solid rgba(255,200,150,.25);box-shadow:0 2px 12px rgba(0,0,0,.2);
+      display:none;pointer-events:none;animation:reconnectPulse 2s ease-in-out infinite}
+    #reconnecting-indicator.visible{display:block}
+    @keyframes reconnectPulse{0%,100%{opacity:.9}50%{opacity:1}}
+    body.dark #dark-toggle,body.intel #dark-toggle{background:#2d2d2d;color:#e5e5e5}
+    body.dark #dark-toggle:hover,body.intel #dark-toggle:hover{background:#3d3d3d}
+    body.dark #layer-toggle,body.intel #layer-toggle{background:#2d2d2d;color:#e5e5e5}
+    body.dark #layer-toggle:hover,body.intel #layer-toggle:hover{background:#3d3d3d}
+    body.dark #cameras-toggle,body.intel #cameras-toggle{background:#2d2d2d;color:#e5e5e5}
+    body.dark #cameras-toggle:hover,body.intel #cameras-toggle:hover{background:#3d3d3d}
+    body.dark #cameras-toggle.active,body.intel #cameras-toggle.active{background:rgba(107,154,117,.2);color:#6b9a75;border-color:rgba(107,154,117,.4)}
+    body.dark #demo-toggle,body.intel #demo-toggle{background:#2d2d2d;color:#e5e5e5}
+    body.dark #demo-toggle:hover,body.intel #demo-toggle:hover{background:#3d3d3d}
+    body.dark #demo-toggle.active,body.intel #demo-toggle.active{background:rgba(139,115,85,.25);color:#b8a078;border-color:rgba(139,115,85,.5)}
+    body.dark .leaflet-popup-content-wrapper,body.intel .leaflet-popup-content-wrapper{background:rgba(18,22,26,.98);border-color:rgba(255,255,255,.08);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+    body.dark .popup-title,body.intel .popup-title{color:#f5f5f5}
+    body.dark .popup-severity.low,body.intel .popup-severity.low{background:rgba(74,107,82,.4);color:#6b9a75}
+    body.dark .popup-severity.medium,body.intel .popup-severity.medium{background:rgba(139,115,85,.4);color:#b8a078}
+    body.dark .popup-severity.high,body.intel .popup-severity.high{background:rgba(166,93,58,.4);color:#c98a6a}
+    body.dark .popup-severity.critical,body.intel .popup-severity.critical{background:rgba(139,74,69,.4);color:#c47a75}
+    body.dark .popup-time,body.intel .popup-time{color:#a3a3a3}
+    body.dark .popup-coords,body.intel .popup-coords{color:#a3a3a3}
+    body.dark .popup-latest-badge,body.intel .popup-latest-badge{color:#f87171;background:rgba(220,38,38,.2)}
+    .marker-cluster-small{background:rgba(34,197,94,.35);color:#fff}
+    .marker-cluster-medium{background:rgba(34,197,94,.5);color:#fff}
+    .marker-cluster-large{background:rgba(34,197,94,.65);color:#fff}
+    body.dark .marker-dot,body.intel .marker-dot{border-color:rgba(255,255,255,.2)}
+    body.intel .marker-dot{border-width:2.5px;border-color:rgba(255,255,255,.5);box-shadow:0 0 0 2px rgba(0,0,0,.5),0 3px 10px rgba(0,0,0,.5)}
+    body.intel .marker-dot.critical{box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 6px 2px rgba(196,60,53,.4)}
+    body.dark .marker-dot.latest,body.intel .marker-dot.latest{border-color:rgba(255,255,255,.5);box-shadow:0 0 10px 3px rgba(234,88,12,.85),0 0 24px 8px rgba(220,38,38,.65),0 0 48px 16px rgba(220,38,38,.45)}
+    body.dark .marker-cluster-small,body.intel .marker-cluster-small{background:rgba(74,107,82,.5);color:rgba(255,255,255,.95)}
+    body.dark .marker-cluster-medium,body.intel .marker-cluster-medium{background:rgba(90,120,95,.55);color:rgba(255,255,255,.95)}
+    body.dark .marker-cluster-large,body.intel .marker-cluster-large{background:rgba(107,135,110,.6);color:rgba(255,255,255,.95)}
+    body.intel .marker-cluster-small,body.intel .marker-cluster-medium,body.intel .marker-cluster-large{box-shadow:0 0 0 2px rgba(255,255,255,.4),0 2px 8px rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.3)}
+
+    .live-cam-marker{width:26px;height:26px;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 35% 35%,#2a3035,#0d0f12);border-radius:50%;box-shadow:0 0 6px 2px rgba(34,197,94,.25),0 0 14px 4px rgba(34,197,94,.18),0 2px 6px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.35),inset 0 1px 0 rgba(255,255,255,.1);border:1px solid rgba(34,197,94,.45);animation:camBreathe 5.5s ease-in-out infinite;transition:transform .2s ease,box-shadow .2s ease;transform-origin:center center;cursor:pointer}
+    .live-cam-marker:hover{transform:scale(1.12);box-shadow:0 0 10px 3px rgba(34,197,94,.4),0 0 22px 8px rgba(34,197,94,.28),0 2px 8px rgba(0,0,0,.5)}
+    .live-cam-marker.active{box-shadow:0 0 12px 4px rgba(34,197,94,.5),0 0 24px 10px rgba(34,197,94,.35);border-color:rgba(34,197,94,.75)}
+    .live-cam-marker.active::after{content:'';position:absolute;bottom:-2px;right:-2px;width:6px;height:6px;background:#4ade80;border-radius:50%;border:1px solid rgba(8,12,14,.9);box-shadow:0 0 4px rgba(74,222,128,.8)}
+    #map.zoom-out .leaflet-marker-icon .live-cam-marker{transform:scale(0.85)}
+    #map.zoom-mid .leaflet-marker-icon .live-cam-marker{transform:scale(0.95)}
+    #map.zoom-in .leaflet-marker-icon .live-cam-marker{transform:scale(1)}
+    #map.zoom-out .leaflet-marker-icon .live-cam-marker:hover{transform:scale(0.95)}
+    #map.zoom-mid .leaflet-marker-icon .live-cam-marker:hover{transform:scale(1.05)}
+    #map.zoom-in .leaflet-marker-icon .live-cam-marker:hover{transform:scale(1.12)}
+    .live-cam-marker.highlight{animation:camPulse .6s ease-out}
+    .live-cam-marker svg{width:14px;height:14px;color:rgba(255,255,255,.95);filter:drop-shadow(0 0 2px rgba(34,197,94,.35))}
+    .live-cam-marker.offline svg{color:#6b7280;opacity:.65}
+    body:not(.dark):not(.intel) .live-cam-marker{box-shadow:0 0 6px 2px rgba(34,197,94,.22),0 0 12px 4px rgba(34,197,94,.15),0 2px 6px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.6),inset 0 1px 0 rgba(255,255,255,.15)}
+    @keyframes camBreathe{0%,100%{box-shadow:0 0 6px 2px rgba(34,197,94,.25),0 0 14px 4px rgba(34,197,94,.18),0 2px 6px rgba(0,0,0,.45)}50%{box-shadow:0 0 10px 3px rgba(34,197,94,.35),0 0 20px 6px rgba(34,197,94,.25),0 2px 6px rgba(0,0,0,.45)}}
+    @keyframes camPulse{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+    .cam-cluster{background:linear-gradient(135deg,rgba(12,18,14,.98) 0%,rgba(8,12,10,.98) 100%)!important;border:1.5px solid rgba(34,197,94,.5)!important;color:#6b9a75!important;font-weight:600!important;font-size:11px!important;letter-spacing:.04em!important;font-variant-numeric:tabular-nums!important;box-shadow:0 0 12px rgba(34,197,94,.25),0 2px 8px rgba(0,0,0,.4)!important;animation:clusterBreathe 5s ease-in-out infinite!important;border-radius:50%!important}
+    @keyframes clusterBreathe{0%,100%{box-shadow:0 0 12px rgba(34,197,94,.25),0 2px 8px rgba(0,0,0,.4)}50%{box-shadow:0 0 18px rgba(34,197,94,.35),0 2px 10px rgba(0,0,0,.45)}}
+    .cam-popup-card{min-width:260px;font-family:'JetBrains Mono',monospace;background:linear-gradient(180deg,rgba(12,16,18,.98) 0%,rgba(8,10,12,.98) 100%);border:1px solid rgba(34,197,94,.25);border-radius:8px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+    .cam-popup-card .cam-name{font-size:13px;font-weight:600;letter-spacing:.08em;color:#fff;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .cam-popup-card .cam-status{padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:11px}
+    .cam-popup-card .cam-status.online{color:#4ade80}
+    .cam-popup-card .cam-status.offline{color:#f87171}
+    .cam-popup-card .cam-preview{height:100px;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:11px;letter-spacing:.15em;margin:0 10px 10px;border-radius:4px;border:1px dashed rgba(255,255,255,.1)}
+    .leaflet-popup-content-wrapper.cam-popup{background:transparent;border:none;box-shadow:none;padding:0}
+    .leaflet-popup-content.cam-popup{margin:0;min-width:0}
+    #map.cameras-active .leaflet-tile-pane{opacity:.92;transition:opacity .3s ease}
+
+    body.command-mode #app{display:grid;flex-direction:unset;grid-template-columns:280px 1fr 260px;grid-template-rows:56px 1fr;grid-template-areas:"top top top" "left map right"}
+    body.command-mode #command-bar{grid-area:top}
+    body.command-mode #cmd-left-panel{display:flex;flex-direction:column;grid-area:left;background:rgba(5,8,10,.98);border-right:1px solid rgba(255,255,255,.06);padding:20px;overflow-y:auto}
+    body.command-mode #cmd-right-panel{display:flex;flex-direction:column;gap:20px;grid-area:right;background:rgba(5,8,10,.98);border-left:1px solid rgba(255,255,255,.06);padding:24px}
+    body.command-mode .map-skeleton-wrap{grid-area:map;min-width:0}
+    .cmd-panel-title{font:10px 'JetBrains Mono',monospace;font-weight:600;letter-spacing:.25em;color:rgba(255,255,255,.4);margin-bottom:12px;margin-top:16px}
+    .cmd-panel-title:first-child{margin-top:0}
+    #cmd-incidents-list,#cmd-critical-list{display:flex;flex-direction:column;gap:8px;min-height:60px}
+    .cmd-incident{font:12px 'JetBrains Mono',monospace;padding:10px 12px;background:rgba(255,255,255,.04);border-left:3px solid rgba(107,154,117,.4);border-radius:4px;color:rgba(255,255,255,.9)}
+    .cmd-incident.critical{border-left-color:rgba(184,84,80,.6);background:rgba(139,74,69,.1)}
+    .cmd-incident-region{font-size:10px;color:rgba(255,255,255,.45);margin-top:4px}
+    .cmd-panel-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+    .cmd-panel-row:last-child{border-bottom:none}
+    .cmd-panel-label{font:11px 'JetBrains Mono',monospace;letter-spacing:.1em;color:rgba(255,255,255,.5)}
+    .cmd-panel-value{font:20px 'JetBrains Mono',monospace;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
+    .cmd-panel-value.accent{color:#6b9a75;font-size:14px}
+    #cmd-r-risk.cmd-high{color:#c47a75}
+    .cmd-auto-toggle{margin-top:20px;padding:12px 16px;font:11px 'JetBrains Mono',monospace;font-weight:600;letter-spacing:.12em;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1);border-radius:4px;cursor:pointer;width:100%;transition:all .2s}
+    .cmd-auto-toggle:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8)}
+    .cmd-auto-toggle.active{background:rgba(107,154,117,.12);color:#6b9a75;border-color:rgba(107,154,117,.35)}
+    .cmd-dot{display:inline-block;width:6px;height:6px;background:#6b9a75;border-radius:50%;margin-right:8px;animation:statusPulse 2.5s ease-in-out infinite}
+    body.command-mode #dark-toggle,
+    body.command-mode #layer-toggle,
+    body.command-mode #risk-toggle,
+    body.command-mode #cameras-toggle,
+    body.command-mode #demo-toggle,
+    body.command-mode #badge,
+    body.command-mode #stats-panel,
+    body.command-mode #risk-legend,
+    body.command-mode #alert-container{display:none !important}
+    #auto-tour-alert-container{position:fixed;top:72px;right:16px;z-index:1100;display:none;pointer-events:none}
+    body.command-mode #auto-tour-alert-container{display:block;right:276px;left:auto}
+    body.command-mode .cmd-hide-in-mode{display:none !important}
+    body.dark #command-bar,body.intel #command-bar{background:rgba(12,16,18,.72);border-bottom-color:rgba(255,255,255,.04)}
+    body.dark #command-bar .system-status,body.intel #command-bar .system-status{color:rgba(255,255,255,.55)}
+    body.dark #command-bar .command-bar-title,body.intel #command-bar .command-bar-title{color:rgba(255,255,255,.65)}
+    body.dark #command-bar .system-status-dot,body.intel #command-bar .system-status-dot{background:rgba(107,154,117,.7)}
+    body.dark #command-bar .stat-label,body.intel #command-bar .stat-label{color:rgba(255,255,255,.35)}
+    body.dark #command-bar .stat-value,body.intel #command-bar .stat-value{color:rgba(255,255,255,.9)}
+    body.dark #command-bar .stat-value.critical,body.intel #command-bar .stat-value.critical{color:rgba(196,122,117,.95)}
+    body.dark #command-bar .stat-divider,body.intel #command-bar .stat-divider{background:rgba(255,255,255,.05)}
+    body.dark #stats-panel,body.intel #stats-panel{background:rgba(12,16,14,.95);border-color:rgba(255,255,255,.08);box-shadow:0 2px 12px rgba(0,0,0,.4)}
+    body.dark #stats-panel .stats-title,body.intel #stats-panel .stats-title{color:rgba(107,154,117,.8)}
+    body.dark #stats-panel .stats-row,body.intel #stats-panel .stats-row{color:rgba(255,255,255,.8)}
+    body.dark #stats-panel .stats-row span:first-child,body.intel #stats-panel .stats-row span:first-child{color:rgba(255,255,255,.5)}
+    body.dark #stats-panel .stats-row span:last-child,body.intel #stats-panel .stats-row span:last-child{color:#6b9a75}
+    body.dark #stats-panel .stats-row.critical span:last-child,body.intel #stats-panel .stats-row.critical span:last-child{color:#c47a75}
+    body.dark #stats-panel .stats-hint,body.intel #stats-panel .stats-hint{color:rgba(255,255,255,.35);border-top-color:rgba(255,255,255,.08)}
+    body.dark #risk-legend,body.intel #risk-legend{background:rgba(8,12,14,.95);border-color:rgba(255,255,255,.08);color:rgba(255,255,255,.8)}
+    body.dark .risk-legend-title,body.intel .risk-legend-title{color:rgba(255,255,255,.9)}
+    body.dark .risk-legend-labels,body.intel .risk-legend-labels{color:rgba(255,255,255,.5)}
+    body.command-mode #command-bar .stat-label{font-size:10px}
+    body.command-mode #command-bar .stat-value{font-size:20px}
+    body.dark #risk-toggle,body.intel #risk-toggle{background:rgba(18,22,26,.95);color:rgba(255,255,255,.9);border-color:rgba(255,255,255,.08)}
+    body.dark #risk-toggle:hover,body.intel #risk-toggle:hover{background:rgba(28,34,40,.95)}
+    body.dark #risk-toggle.active,body.intel #risk-toggle.active{background:rgba(50,65,55,.9);color:#6b9a75;border-color:rgba(107,154,117,.25)}
+    body.dark #risk-toggle.active:hover,body.intel #risk-toggle.active:hover{background:rgba(55,72,60,.95)}
+    body.command-mode #command-toggle{position:fixed;bottom:24px;right:24px;padding:14px 24px;font-size:12px;letter-spacing:.15em;background:rgba(107,154,117,.12);color:#6b9a75;border:1px solid rgba(107,154,117,.3)}
+    body.command-mode #command-toggle:hover{background:rgba(107,154,117,.2)}
+    body.command-mode.dark #map{background:#0a0c0d}
+    body.command-mode .marker-dot{width:26px;height:26px;border-width:2px}
+    body.command-mode .leaflet-div-icon{background:none!important;border:none!important;width:18px!important;height:18px!important;margin:-9px 0 0 -9px!important}
+    .map-mode-switcher{position:absolute;bottom:20px;right:20px;z-index:1000;display:flex;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.08);border-radius:6px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    .map-mode-switcher .mode-btn{border:none;background:none;padding:10px 16px;font:12px 'Source Sans 3',system-ui,sans-serif;font-weight:500;letter-spacing:.04em;cursor:pointer;color:rgba(0,0,0,.6);transition:all .2s;border-right:1px solid rgba(0,0,0,.06)}
+    .map-mode-switcher .mode-btn:last-child{border-right:none}
+    .map-mode-switcher .mode-btn:hover{background:rgba(0,0,0,.04);color:#1a1f22}
+    .map-mode-switcher .mode-btn.active{background:#166534;color:#fff}
+    .map-mode-switcher .mode-btn.active:hover{background:#14532d;color:#fff}
+    body.dark .map-mode-switcher,body.intel .map-mode-switcher{background:rgba(18,22,26,.95);border-color:rgba(255,255,255,.08);box-shadow:0 2px 12px rgba(0,0,0,.4)}
+    body.dark .map-mode-switcher .mode-btn,body.intel .map-mode-switcher .mode-btn{color:rgba(255,255,255,.5);border-right-color:rgba(255,255,255,.06)}
+    body.dark .map-mode-switcher .mode-btn:hover,body.intel .map-mode-switcher .mode-btn:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.9)}
+    body.dark .map-mode-switcher .mode-btn.active,body.intel .map-mode-switcher .mode-btn.active{background:rgba(107,154,117,.5);color:#fff}
+    body.dark .map-mode-switcher .mode-btn.active:hover,body.intel .map-mode-switcher .mode-btn.active:hover{background:rgba(107,154,117,.6)}
+    body.command-mode .map-mode-switcher{position:fixed;bottom:24px;right:24px}
+
+    :root{--navbar-height:52px}
+    #layer-panel{
+      position:absolute;top:calc(var(--navbar-height) + 20px);left:12px;z-index:1000;
+      width:260px;background:rgba(255,255,255,.95);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border:1px solid rgba(0,0,0,.1);
+      border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.08);
+      font-family:'Source Sans 3',system-ui,-apple-system,sans-serif;
+      overflow:hidden;
+      transition:width .25s ease,opacity .25s ease,transform .25s ease;
+    }
+    body.dark #layer-panel,body.intel #layer-panel{background:rgba(248,250,252,.92);border-color:rgba(255,255,255,.2);box-shadow:0 4px 24px rgba(0,0,0,.25),0 0 0 1px rgba(255,255,255,.06)}
+    #layer-panel.collapsed{
+      width:44px;min-height:44px;
+    }
+    #layer-panel.collapsed .layer-panel-content{display:none}
+    #layer-panel.collapsed #layer-panel-header{justify-content:center}
+    #layer-panel-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;cursor:pointer;user-select:none;
+      background:rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.06);
+    }
+    body.dark #layer-panel-header,body.intel #layer-panel-header{background:rgba(0,0,0,.06);border-bottom-color:rgba(255,255,255,.08)}
+    #layer-panel.collapsed #layer-panel-header{border-bottom:none;padding:10px}
+    .layer-panel-title{
+      font-size:13px;font-weight:600;letter-spacing:.04em;
+      color:rgba(0,0,0,.85);
+    }
+    body.dark .layer-panel-title,body.intel .layer-panel-title{color:rgba(0,0,0,.85)}
+    #layer-panel.collapsed .layer-panel-title{display:none}
+    .layer-panel-toggle-btn{
+      width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.06);border:none;border-radius:6px;
+      color:rgba(0,0,0,.5);cursor:pointer;
+      transition:background .2s,color .2s,transform .2s;
+    }
+    .layer-panel-toggle-btn:hover{background:rgba(0,0,0,.1);color:rgba(0,0,0,.85)}
+    body.dark .layer-panel-toggle-btn,body.intel .layer-panel-toggle-btn{background:rgba(0,0,0,.08);color:rgba(0,0,0,.6)}
+    body.dark .layer-panel-toggle-btn:hover,body.intel .layer-panel-toggle-btn:hover{background:rgba(0,0,0,.12);color:rgba(0,0,0,.9)}
+    .layer-panel-toggle-btn svg{width:16px;height:16px;transition:transform .25s}
+    #layer-panel.collapsed .layer-panel-toggle-btn svg{transform:rotate(180deg)}
+    .layer-panel-content{padding:10px 12px}
+    .layer-panel-section{margin-bottom:14px}
+    .layer-panel-section:last-child{margin-bottom:0}
+    .layer-panel-section-title{
+      font-size:10px;font-weight:600;letter-spacing:.08em;
+      color:rgba(0,0,0,.55);margin-bottom:8px;padding-bottom:4px;
+      text-transform:uppercase;
+    }
+    body.dark .layer-panel-section-title,body.intel .layer-panel-section-title{color:rgba(0,0,0,.55)}
+    .layer-panel-item{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 10px;margin-bottom:4px;
+      background:rgba(0,0,0,.03);border-radius:6px;
+      cursor:pointer;transition:background .2s;
+    }
+    .layer-panel-item:last-child{margin-bottom:0}
+    .layer-panel-item:hover{background:rgba(0,0,0,.05)}
+    .layer-panel-item-icon{
+      width:20px;height:20px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      color:rgba(0,0,0,.5);
+    }
+    body.dark .layer-panel-item-icon,body.intel .layer-panel-item-icon{color:rgba(0,0,0,.6)}
+    .layer-panel-item-icon svg{width:14px;height:14px}
+    .layer-panel-item-label{flex:1;font-size:13px;font-weight:500;letter-spacing:.02em;color:rgba(0,0,0,.82)}
+    body.dark .layer-panel-item-label,body.intel .layer-panel-item-label{color:rgba(0,0,0,.88)}
+    .layer-panel-toggle{
+      width:36px;height:20px;flex-shrink:0;
+      background:rgba(0,0,0,.12);border-radius:10px;
+      position:relative;cursor:pointer;
+      transition:background .25s ease;
+    }
+    .layer-panel-toggle.on{background:rgba(34,197,94,.5)}
+    .layer-panel-toggle::after{
+      content:'';position:absolute;top:2px;left:2px;
+      width:16px;height:16px;border-radius:50%;
+      background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);
+      transition:transform .25s cubic-bezier(.4,0,.2,1);
+    }
+    .layer-panel-toggle.on::after{transform:translateX(16px)}
+    .layer-panel-item.basemap .layer-panel-toggle.on{background:rgba(34,197,94,.55)}
+    .layer-panel-item.radio .layer-panel-toggle{width:18px;height:18px;border-radius:50%;border:2px solid rgba(0,0,0,.25)}
+    .layer-panel-item.radio .layer-panel-toggle::after{display:none}
+    .layer-panel-item.radio .layer-panel-toggle.on{background:rgba(34,197,94,.55);border-color:rgba(34,197,94,.7)}
+    body.command-mode #layer-panel{display:none}
+
+    .layer-panel-group{margin-bottom:4px}
+    .layer-panel-group-header{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 10px;
+      background:rgba(0,0,0,.04);border-radius:6px;
+      cursor:pointer;transition:background .2s;position:relative;
+    }
+    .layer-panel-group-header:hover{background:rgba(0,0,0,.06)}
+    .layer-panel-group-expand{
+      width:20px;height:20px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      background:transparent;border:none;border-radius:4px;
+      color:rgba(0,0,0,.5);cursor:pointer;
+      transition:transform .25s cubic-bezier(.4,0,.2,1),color .2s;
+    }
+    .layer-panel-group-expand:hover{color:rgba(0,0,0,.85)}
+    .layer-panel-group.expanded .layer-panel-group-expand{transform:rotate(-90deg)}
+    .layer-panel-group-expand svg{width:12px;height:12px}
+    .layer-panel-group-children{
+      overflow:hidden;
+      max-height:0;opacity:0;
+      transition:max-height .3s cubic-bezier(.4,0,.2,1),opacity .25s ease,margin .25s ease;
+    }
+    .layer-panel-group.expanded .layer-panel-group-children{
+      max-height:140px;opacity:1;
+      margin-top:4px;margin-left:16px;
+      padding-left:8px;border-left:1px solid rgba(0,0,0,.1);
+    }
+    body.dark .layer-panel-group.expanded .layer-panel-group-children,
+    body.intel .layer-panel-group.expanded .layer-panel-group-children{border-left-color:rgba(255,255,255,.15)}
+    .layer-panel-item.layer-panel-sub{margin-left:0;padding:6px 8px}
+    .layer-panel-sub-label{font-size:11px;font-weight:500;letter-spacing:.03em;color:rgba(0,0,0,.55);padding:6px 8px;margin-left:16px;border-left:1px solid rgba(0,0,0,.1);font-family:'Source Sans 3',system-ui,sans-serif}
+    body.dark .layer-panel-sub-label,body.intel .layer-panel-sub-label{color:rgba(255,255,255,.45);border-left-color:rgba(255,255,255,.15)}
+
+    .leaflet-bottom.leaflet-left{left:12px !important;bottom:24px !important;z-index:1000}
+    .leaflet-control-zoom{display:flex !important;flex-direction:row-reverse !important;align-items:center !important;border:none !important;box-shadow:0 2px 12px rgba(0,0,0,.35) !important;border-radius:999px !important;background:rgba(30,35,40,.9) !important;overflow:hidden !important}
+    .leaflet-control-zoom a{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;line-height:36px !important;display:flex !important;align-items:center !important;justify-content:center !important;font-size:18px !important;font-weight:400 !important;text-align:center !important;text-decoration:none !important;color:#fff !important;background:transparent !important;border:none !important;position:relative !important;transition:background .2s}
+    .leaflet-control-zoom-in{border-radius:0 999px 999px 0 !important}
+    .leaflet-control-zoom-out{border-radius:999px 0 0 999px !important;border-right:1px solid rgba(255,255,255,.15) !important}
+    .leaflet-control-zoom a:hover{background:rgba(255,255,255,.15) !important;color:#fff !important}
+    body.dark .leaflet-control-zoom,body.intel .leaflet-control-zoom{background:rgba(25,30,35,.92) !important}
+    body.dark .leaflet-control-zoom a,body.intel .leaflet-control-zoom a{color:#fff !important;background:transparent !important}
+    body.dark .leaflet-control-zoom a:hover,body.intel .leaflet-control-zoom a:hover{background:rgba(255,255,255,.12) !important;color:#fff !important}
+    @media (max-width:640px){
+      #layer-panel{top:calc(var(--navbar-height) + 12px);left:8px}
+      .leaflet-bottom.leaflet-left{left:8px !important;bottom:16px !important}
+    }
+
+    #command-bar{
+      position:absolute;top:0;left:0;right:0;height:52px;z-index:1001;
+      background:rgba(255,255,255,.82);
+      backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(0,0,0,.06);
+      display:flex;align-items:center;justify-content:space-between;gap:40px;
+      padding:0 24px;
+      font-family:'Source Sans 3',system-ui,-apple-system,sans-serif;
+    }
+    #command-bar .system-status{
+      display:flex;align-items:center;gap:10px;
+      font-size:11px;letter-spacing:.06em;color:rgba(0,0,0,.6);font-weight:500;
+    }
+    #command-bar .command-bar-title{font-size:12px;letter-spacing:.06em;color:rgba(0,0,0,.75);font-weight:600}
+    #command-bar .system-status-dot{
+      width:6px;height:6px;border-radius:50%;
+      background:#166534;
+    }
+    #command-bar .command-bar-stats{display:flex;align-items:center;gap:clamp(24px,4vw,48px)}
+    #command-bar .stat{display:flex;flex-direction:column;align-items:flex-start;gap:0}
+    #command-bar .stat-label{font-size:11px;letter-spacing:.05em;color:rgba(0,0,0,.5);font-weight:500}
+    #command-bar .stat-value{font-size:15px;font-weight:600;color:#1a1f22;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+    #command-bar .stat-value.critical{color:#b91c1c}
+    #command-bar .stat-value.critical.critical-active{opacity:.95}
+    #command-bar .stat-divider{width:1px;height:18px;background:rgba(0,0,0,.08)}
+
+    #stats-panel{position:absolute;top:116px;right:12px;z-index:999;background:rgba(255,255,255,.96);padding:12px 16px;border-radius:8px;font:13px/1.4 'Source Sans 3',system-ui,sans-serif;border:1px solid rgba(0,0,0,.08);display:none;min-width:140px;backdrop-filter:blur(8px);letter-spacing:.02em;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    #stats-panel.visible{display:block}
+    #stats-panel .stats-title{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:#166534;margin-bottom:8px;font-weight:500}
+    #stats-panel .stats-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;color:#1a1f22}
+    #stats-panel .stats-row span:first-child{font-size:10px;color:rgba(0,0,0,.5);text-transform:uppercase}
+    #stats-panel .stats-row span:last-child{font-family:ui-monospace,monospace;font-weight:600;font-size:14px;color:#166534}
+    #stats-panel .stats-row.critical span:last-child{color:#b91c1c}
+    #stats-panel .stats-hint{font-size:9px;color:rgba(0,0,0,.4);margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,.08)}
+
+    #alert-container{position:fixed;top:72px;right:16px;z-index:1100;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+    #alert-container>*{pointer-events:auto}
+    .critical-alert{
+      min-width:280px;max-width:360px;padding:14px 16px;
+      background:linear-gradient(135deg,rgba(80,45,42,.95) 0%,rgba(55,35,33,.98) 100%);
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;
+      box-shadow:0 8px 24px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.3);
+      color:#fff;font-family:'Source Sans 3',system-ui,sans-serif;font-size:13px;line-height:1.4;
+      animation:alertSlideIn .3s ease-out;
+    }
+    .critical-alert.alert-out{animation:alertSlideOut .25s ease-in forwards}
+    @keyframes alertSlideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes alertSlideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
+    .critical-alert-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+    .critical-alert-title{font-weight:700;font-size:12px;letter-spacing:.08em;opacity:.95}
+    .critical-alert-close{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;padding:0;width:24px;height:24px;flex-shrink:0;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
+    .critical-alert-close:hover{background:rgba(255,255,255,.2);color:#fff}
+    .critical-alert-body{font-size:12px;opacity:.9}
+    .critical-alert-body div{margin-top:4px}
+    .alert-camera-btn{margin-top:10px;padding:8px 14px;width:100%;font:11px 'JetBrains Mono',monospace;font-weight:600;letter-spacing:.1em;background:rgba(34,197,94,.25);border:1px solid rgba(34,197,94,.45);color:#fff;border-radius:6px;cursor:pointer;transition:background .2s,border-color .2s}
+    .alert-camera-btn:hover{background:rgba(34,197,94,.4);border-color:rgba(34,197,94,.6)}
+    .fire-event-alert{min-width:260px;max-width:340px;padding:12px 14px;background:linear-gradient(135deg,rgba(45,65,48,.95) 0%,rgba(35,55,40,.98) 100%);border:1px solid rgba(34,197,94,.3);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.3);color:#fff;font-family:'Source Sans 3',system-ui,sans-serif;font-size:12px;line-height:1.4;animation:alertSlideIn .3s ease-out}
+    .fire-event-alert.alert-out{animation:alertSlideOut .25s ease-in forwards}
+    .fire-event-alert-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+    .fire-event-alert-title{font-weight:600;font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.95)}
+    .fire-event-alert-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;padding:0;width:20px;height:20px;flex-shrink:0;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+    .fire-event-alert-close:hover{background:rgba(255,255,255,.2);color:#fff}
+    .fire-event-alert-body div{margin-top:4px}
+
+    #risk-toggle{position:absolute;top:72px;left:90px;z-index:1000;background:rgba(255,255,255,.96);color:#1a1f22;border:1px solid rgba(0,0,0,.08);padding:8px 14px;border-radius:6px;font:13px sans-serif;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    #cameras-toggle{position:absolute;top:72px;left:205px;z-index:1000;background:rgba(255,255,255,.96);color:#1a1f22;border:1px solid rgba(0,0,0,.08);padding:8px 14px;border-radius:6px;font:13px sans-serif;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:opacity .25s}
+    #cameras-toggle:hover{background:rgba(248,250,252,.98)}
+    #cameras-toggle.active{background:rgba(61,90,69,.15);color:#166534;border-color:rgba(61,90,69,.35)}
+    #demo-toggle{display:none}
+    .live-system-badge{display:inline-flex;align-items:center;margin-left:16px;padding:3px 10px;border-radius:4px;font:10px 'Source Sans 3',system-ui,sans-serif;font-weight:600;letter-spacing:.06em;color:rgba(0,0,0,.5);background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.2)}
+    body.dark .live-system-badge,body.intel .live-system-badge{color:rgba(107,154,117,.9);background:rgba(107,154,117,.15);border-color:rgba(107,154,117,.25)}
+    #risk-toggle:hover{background:rgba(248,250,252,.98)}
+    #risk-toggle.active{background:rgba(34,197,94,.12);color:#166534;border-color:rgba(34,197,94,.3)}
+    #risk-toggle.active:hover{background:rgba(34,197,94,.18)}
+    #risk-legend{position:absolute;bottom:70px;left:16px;z-index:999;padding:10px 14px;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.08);border-radius:6px;font:11px 'JetBrains Mono',monospace;color:#1a1f22;display:none;backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    #risk-legend.visible{display:block}
+    .risk-legend-title{margin-bottom:8px;font-weight:600;letter-spacing:.05em;color:#1a1f22}
+    .risk-legend-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(90,107,93,.6),rgba(139,115,85,.7),rgba(100,50,48,.9));margin-bottom:6px}
+    .risk-legend-labels{display:flex;justify-content:space-between;font-size:10px;color:rgba(0,0,0,.5)}
+    .leaflet-heatmap-layer{pointer-events:none !important;opacity:.88}
+    #map.risk-breathing .leaflet-riskPane-pane{animation:riskBreathe 5s ease-in-out infinite}
+    @keyframes riskBreathe{0%,100%{opacity:.92}50%{opacity:1}}
+
+    .camera-marker{width:22px;height:22px;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 35% 35%,#2a3035,#0d0f12);border-radius:50%;border:1px solid rgba(34,197,94,.4);box-shadow:0 0 5px 2px rgba(34,197,94,.2),0 0 10px 3px rgba(34,197,94,.12),0 2px 5px rgba(0,0,0,.4);transition:transform .2s ease,box-shadow .2s ease;transform-origin:center center;cursor:pointer;animation:camBreathe 5.5s ease-in-out infinite}
+    .camera-marker:hover{transform:scale(1.1);box-shadow:0 0 8px 2px rgba(34,197,94,.35),0 0 16px 5px rgba(34,197,94,.2)}
+    .camera-marker.active{box-shadow:0 0 10px 3px rgba(34,197,94,.45)}
+    #map.zoom-out .leaflet-marker-icon .camera-marker{transform:scale(0.85)}
+    #map.zoom-mid .leaflet-marker-icon .camera-marker{transform:scale(0.95)}
+    #map.zoom-in .leaflet-marker-icon .camera-marker{transform:scale(1)}
+    #map.zoom-out .leaflet-marker-icon .camera-marker:hover{transform:scale(0.93)}
+    #map.zoom-mid .leaflet-marker-icon .camera-marker:hover{transform:scale(1.05)}
+    #map.zoom-in .leaflet-marker-icon .camera-marker:hover{transform:scale(1.1)}
+    .camera-marker svg{width:12px;height:12px;color:rgba(255,255,255,.95);filter:drop-shadow(0 0 1px rgba(34,197,94,.3))}
+    body.dark .camera-marker,body.intel .camera-marker{background:radial-gradient(circle at 35% 35%,#1a1f22,#080a0c);border-color:rgba(34,197,94,.35)}
+    body:not(.dark):not(.intel) .camera-marker{box-shadow:0 0 5px 2px rgba(34,197,94,.18),0 0 10px 3px rgba(34,197,94,.1),0 2px 5px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.5)}
+
+    #camera-panel-container{position:fixed;inset:0;z-index:2000;pointer-events:none;display:none;align-items:center;justify-content:center;padding:20px}
+    #camera-panel-container.visible{display:flex;pointer-events:auto}
+    #camera-panel-container .camera-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:1;pointer-events:auto}
+    .camera-modal-backdrop{animation:cameraBackdropIn .2s ease-out}
+    @keyframes cameraBackdropIn{from{opacity:0}to{opacity:1}}
+    .camera-panel{
+      position:relative;z-index:2;width:65vw;height:60vh;min-width:320px;min-height:240px;max-width:min(1200px,95vw);max-height:min(700px,85vh);
+      background:rgba(8,12,14,.98);border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.3);
+      font-family:'JetBrains Mono',monospace;
+      display:flex;flex-direction:column;
+      animation:cameraPanelIn .25s ease-out forwards;
+    }
+    @media (max-width:768px){.camera-panel{width:92vw;height:55vh;min-height:200px}}
+    @keyframes cameraPanelIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+    .camera-panel.Closing{animation:cameraPanelOut .2s ease-in forwards}
+    @keyframes cameraPanelOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.96)}}
+    .camera-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.08);cursor:move;user-select:none}
+    .camera-panel-title{font-size:11px;font-weight:600;letter-spacing:.12em;color:rgba(255,255,255,.6)}
+    .camera-panel-close{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;padding:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;border-radius:4px}
+    .camera-panel-close:hover{background:rgba(255,255,255,.1);color:#fff}
+    .camera-panel-video-wrap{position:relative;flex:1;min-height:0;background:#0a0c0d;display:flex;align-items:center;justify-content:center}
+    .camera-panel-video-wrap video{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
+    .camera-panel-loader{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0a0c0d;color:rgba(255,255,255,.5);font-size:11px;letter-spacing:.1em}
+    .camera-panel-loader.hidden{display:none}
+    .camera-panel-spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,.15);border-top-color:#6b9a75;border-radius:50%;animation:cameraSpinner .8s linear infinite}
+    @keyframes cameraSpinner{to{transform:rotate(360deg)}}
+    .camera-panel-live{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(0,0,0,.7);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.9)}
+    .camera-panel-live-dot{width:6px;height:6px;background:#b85c58;border-radius:50%;animation:livePulse 2s ease-in-out infinite}
+    @keyframes livePulse{0%,100%{opacity:1;transform:scale(1);box-shadow:0 0 0 0 rgba(184,92,88,.4)}50%{opacity:.9;transform:scale(1.1);box-shadow:0 0 6px 2px rgba(184,92,88,.35)}}
+    .camera-panel-timestamp{position:absolute;top:10px;left:10px;padding:4px 10px;background:rgba(0,0,0,.7);border-radius:4px;font-size:11px;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.9);letter-spacing:.05em}
+    .camera-panel-timestamp.live-active{top:36px}
+    .camera-panel-region{position:absolute;top:36px;left:10px;padding:4px 10px;background:rgba(0,0,0,.7);border-radius:4px;font-size:10px;color:rgba(255,255,255,.7);letter-spacing:.05em}
+    .camera-panel-region.live-active{top:62px}
+    .camera-panel-footer{padding:8px 14px;background:rgba(0,0,0,.2);font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.08em}
+    .camera-panel-loader.hidden,.camera-panel-live.hidden,.camera-panel-offline.hidden{display:none !important}
+    .camera-panel-offline{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0c0d;color:rgba(255,255,255,.5);font-size:13px;letter-spacing:.1em}
+
+    .map-skeleton-wrap{position:relative;flex:1;min-height:0;height:100%;width:100%}
+    #map-skeleton{position:absolute;inset:0;z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
+      background:linear-gradient(180deg,rgba(232,236,239,.97) 0%,rgba(220,224,228,.98) 100%);pointer-events:none;
+      font-family:'JetBrains Mono',monospace;transition:opacity .35s ease}
+    #map-skeleton.hidden{opacity:0;pointer-events:none}
+    body.dark #map-skeleton,body.intel #map-skeleton{background:linear-gradient(180deg,rgba(10,12,13,.97) 0%,rgba(6,8,9,.98) 100%)}
+    .skeleton-pulse{animation:skeletonPulse 1.8s ease-in-out infinite}
+    @keyframes skeletonPulse{0%,100%{opacity:.4}50%{opacity:.85}}
+    .skeleton-bar{height:8px;border-radius:4px;background:rgba(0,0,0,.12);max-width:240px;width:60%}
+    body.dark .skeleton-bar,body.intel .skeleton-bar{background:rgba(255,255,255,.12)}
+    .skeleton-bar.short{max-width:120px;width:35%}
+    .skeleton-dots{display:flex;gap:8px;align-items:center;justify-content:center}
+    .skeleton-dot{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.2);animation:skeletonPulse 1.4s ease-in-out infinite}
+    body.dark .skeleton-dot,body.intel .skeleton-dot{background:rgba(255,255,255,.25)}
+    .skeleton-dot:nth-child(2){animation-delay:.2s}
+    .skeleton-dot:nth-child(3){animation-delay:.4s}
+    .skeleton-text{font-size:11px;letter-spacing:.2em;color:rgba(0,0,0,.4)}
+    body.dark .skeleton-text,body.intel .skeleton-text{color:rgba(255,255,255,.4)}
+
+    #error-boundary{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(8,12,16,.96);font-family:'JetBrains Mono',monospace}
+    #error-boundary.visible{display:flex;flex-direction:column;gap:16px}
+    #error-boundary .error-title{font-size:14px;letter-spacing:.15em;color:rgba(255,255,255,.9)}
+    #error-boundary .error-msg{font-size:12px;color:rgba(255,255,255,.5);max-width:420px;text-align:center;line-height:1.5}
+    #error-boundary .error-dismiss{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:10px 24px;border-radius:6px;cursor:pointer;font:11px 'JetBrains Mono',monospace;letter-spacing:.1em}
+    #error-boundary .error-dismiss:hover{background:rgba(255,255,255,.15)}
+  </style>
+</head>
+<body>
+  <div id="error-boundary">
+    <span class="error-title">TIZIMNI TIKLASH</span>
+    <span class="error-msg" id="error-boundary-msg">Xatolik yuz berdi. Ilova ishlashda davom etadi.</span>
+    <button type="button" class="error-dismiss" id="error-boundary-dismiss">Yopish</button>
+  </div>
+  <div id="intro-overlay">
+    <h1 class="intro-title">SMART FOREST</h1>
+    <p class="intro-subtitle">Milliy o'rmon monitoring platformasi</p>
+    <p class="intro-org">O'zbekiston Respublikasi</p>
+    <p class="intro-status" id="intro-status">Tizim ishga tushmoqda...</p>
+  </div>
+  <div id="app">
+    <div id="command-bar">
+    <div class="system-status">
+      <div class="system-status-dot"></div>
+      <span class="command-bar-title">SMART FOREST — MILLIY O'RMON MONITORING</span>
+      <span id="live-system-badge" class="live-system-badge" aria-label="Canli tizim">CANLI TIZIM</span>
+    </div>
+    <div class="command-bar-stats">
+      <div class="stat"><span class="stat-label">Faol sensarlar</span><span class="stat-value" id="cmd-sensors">—</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-label">Muhim ogohlantirishlar</span><span class="stat-value critical" id="cmd-critical">—</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-label">Onlayn viloyatlar</span><span class="stat-value" id="cmd-regions">—</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-label">So'nggi yangilanish</span><span class="stat-value" id="cmd-last">—</span></div>
+    </div>
+  </div>
+    <div class="map-skeleton-wrap">
+      <div id="layer-panel">
+        <div id="layer-panel-header">
+          <span class="layer-panel-title">Qatlamlar paneli</span>
+          <button type="button" class="layer-panel-toggle-btn" id="layer-panel-collapse" aria-label="Panelni yig'ish">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+          </button>
+        </div>
+        <div class="layer-panel-content">
+          <div class="layer-panel-section">
+            <div class="layer-panel-section-title">Qoplama qatlamlari</div>
+            <div class="layer-panel-item" data-layer="eventMarkers">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+              <span class="layer-panel-item-label">Hodisa belgilari</span>
+              <div class="layer-panel-toggle" id="toggle-eventMarkers"></div>
+            </div>
+            <div class="layer-panel-item" data-layer="aiRisk">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg></span>
+              <span class="layer-panel-item-label">AI xavf xaritasi</span>
+              <div class="layer-panel-toggle" id="toggle-aiRisk"></div>
+            </div>
+            <div class="layer-panel-item" data-layer="cameras">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></span>
+              <span class="layer-panel-item-label">Kamerlar qatlami</span>
+              <div class="layer-panel-toggle" id="toggle-cameras"></div>
+            </div>
+            <div class="layer-panel-item" data-layer="boundary">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+              <span class="layer-panel-item-label">O'zbekiston chegarasi</span>
+              <div class="layer-panel-toggle" id="toggle-boundary"></div>
+            </div>
+            <div class="layer-panel-group" data-group="forestLands">
+              <div class="layer-panel-group-header">
+                <button type="button" class="layer-panel-group-expand" id="forestLands-expand" aria-label="Kengaytirish">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg></span>
+                <span class="layer-panel-item-label">O'rmon yerlari</span>
+                <div class="layer-panel-toggle" id="toggle-forestLands"></div>
+              </div>
+              <div class="layer-panel-group-children" id="forestLands-children">
+                <div class="layer-panel-sub-label">Forest Areas (Demo)</div>
+                <div class="layer-panel-item layer-panel-sub" data-layer="leaseAreas">
+                  <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg></span>
+                  <span class="layer-panel-item-label">Ijara maydonlari</span>
+                  <div class="layer-panel-toggle" id="toggle-leaseAreas"></div>
+                </div>
+                <div class="layer-panel-item layer-panel-sub" data-layer="availableLands">
+                  <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+                  <span class="layer-panel-item-label">Bo'sh yerlar</span>
+                  <div class="layer-panel-toggle" id="toggle-availableLands"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="layer-panel-section">
+            <div class="layer-panel-section-title">Asosiy xarita</div>
+            <div class="layer-panel-item basemap radio" data-basemap="satellite">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M18.36 5.64l1.41-1.41"/></svg></span>
+              <span class="layer-panel-item-label">Sun'iy yo'ldosh xaritasi</span>
+              <div class="layer-panel-toggle" id="basemap-satellite"></div>
+            </div>
+            <div class="layer-panel-item basemap radio" data-basemap="hybrid">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+              <span class="layer-panel-item-label">Gibrid xarita</span>
+              <div class="layer-panel-toggle" id="basemap-hybrid"></div>
+            </div>
+            <div class="layer-panel-item basemap radio" data-basemap="topographic">
+              <span class="layer-panel-item-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg></span>
+              <span class="layer-panel-item-label">Topografik xarita</span>
+              <div class="layer-panel-toggle" id="basemap-topographic"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="map"></div>
+      <div id="map-skeleton">
+        <div class="skeleton-dots skeleton-pulse"><span class="skeleton-dot"></span><span class="skeleton-dot"></span><span class="skeleton-dot"></span></div>
+        <div class="skeleton-bar skeleton-pulse"></div>
+        <div class="skeleton-bar short skeleton-pulse"></div>
+        <div class="skeleton-text">XARITA MA'LUMOTLARI YUKLANMOQDA</div>
+      </div>
+    </div>
+    <div id="cmd-left-panel">
+      <div class="cmd-panel-title">CANLI HODISALAR</div>
+      <div id="cmd-incidents-list"></div>
+      <div class="cmd-panel-title">MUHIM OGOHLANTIRISHLAR</div>
+      <div id="cmd-critical-list"></div>
+    </div>
+    <div id="cmd-right-panel">
+      <div class="cmd-panel-row"><span class="cmd-panel-label">Sensarlar</span><span class="cmd-panel-value" id="cmd-r-sensors">—</span></div>
+      <div class="cmd-panel-row"><span class="cmd-panel-label">Faol viloyatlar</span><span class="cmd-panel-value" id="cmd-r-regions">—</span></div>
+      <div class="cmd-panel-row"><span class="cmd-panel-label">Xavf darajasi</span><span class="cmd-panel-value" id="cmd-r-risk">—</span></div>
+      <div class="cmd-panel-row cmd-status"><span class="cmd-panel-label">Holat</span><span class="cmd-panel-value accent"><span class="cmd-dot"></span> ISHLAYAPTI</span></div>
+      <button id="auto-command-toggle" type="button" class="cmd-auto-toggle">AVTO BUYRUQ: O'CHIQ</button>
+    </div>
+  </div>
+  <button id="dark-toggle" type="button" title="Qorong'u rejim">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+    <span>Qorong'u</span>
+  </button>
+  <button id="layer-toggle" type="button" title="Belgilar / Issiqlik xaritasi">Issiqlik xaritasi</button>
+  <button id="risk-toggle" type="button" title="AI xavf qatlami">🟢 AI xavf qatlami</button>
+  <button id="cameras-toggle" type="button" title="Canli kamerlar qatlami">🎥 Kamerlar</button>
+  <button id="demo-toggle" type="button" title="Demo rejim — faoliyatni simulyatsiya qilish">DEMO</button>
+  <div id="risk-legend">
+    <div class="risk-legend-title">🔥 Yong'in xavfi — Keyingi 48 soat</div>
+    <div class="risk-legend-bar"></div>
+    <div class="risk-legend-labels"><span>Past</span><span>Yuqori</span></div>
+  </div>
+  <div id="badge" class="loading">Hodisalar: <b>—</b> <span class="skeleton-text" style="font-size:11px;display:inline-flex;align-items:center;gap:4px"><span class="skeleton-dot" style="width:5px;height:5px"></span> Yuklanmoqda</span></div>
+  <div id="reconnecting-indicator">Qayta ulanmoqda…</div>
+  <div id="stats-panel">
+    <div class="stats-title" id="stats-region-name">—</div>
+    <div class="stats-row"><span>Jami</span><span>0</span></div>
+    <div class="stats-row critical"><span>Muhim</span><span>0</span></div>
+    <div class="stats-row"><span>Yong'inlar</span><span>0</span></div>
+    <div class="stats-row"><span>Noqonuniy daraxt kesish</span><span>0</span></div>
+    <div class="stats-hint">Filterni tozalash uchun viloyatni qayta bosing</div>
+  </div>
+  <div id="map-mode-switcher" class="map-mode-switcher">
+    <button type="button" class="mode-btn active" data-mode="national">MILLIY KO'RINISH</button>
+    <button type="button" class="mode-btn" data-mode="command">BUYRUQ REJIMI</button>
+    <button type="button" class="mode-btn" data-mode="intel">RAQAMLASHTIRILGAN KO'RINISH</button>
+  </div>
+  <div id="alert-container"></div>
+  <div id="auto-tour-alert-container"></div>
+  <div id="camera-panel-container"></div>
+
+  <script>
+    (function(){
+      var errEl,msgEl,dismissEl;
+      function showErrorBoundary(msg){
+        try{
+          errEl=errEl||document.getElementById('error-boundary');
+          msgEl=msgEl||document.getElementById('error-boundary-msg');
+          if(errEl&&msgEl){ msgEl.textContent=msg||'Xatolik yuz berdi. Ilova ishlashda davom etadi.'; errEl.classList.add('visible'); }
+        }catch(e){ console.error('[ErrorBoundary]',e); }
+      }
+      function hideErrorBoundary(){ try{ if(errEl)errEl.classList.remove('visible'); }catch(e){} }
+      window.addEventListener('error',function(ev){
+        console.error('[SmartForest]',ev.error||ev.message,ev.filename,ev.lineno,ev.colno);
+        showErrorBoundary('A runtime error occurred. You can continue using the app.');
+        ev.preventDefault(); ev.stopPropagation(); return true;
+      });
+      window.addEventListener('unhandledrejection',function(ev){
+        console.error('[SmartForest] Unhandled rejection:',ev.reason);
+        showErrorBoundary('A connection or data error occurred. You can continue using the app.');
+        ev.preventDefault(); ev.stopPropagation(); return true;
+      });
+      document.addEventListener('DOMContentLoaded',function(){
+        dismissEl=document.getElementById('error-boundary-dismiss');
+        if(dismissEl)dismissEl.onclick=hideErrorBoundary;
+      });
+    })();
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    (function(){
+      var orig = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type, opts){
+        if (type === '2d' && (!opts || opts.willReadFrequently === undefined)) opts = { ...(opts||{}), willReadFrequently: true };
+        return orig.call(this, type, opts);
+      };
+    })();
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script>
+    const _storageFallback = {};
+    let _storageBlocked = false;
+    (function(){
+      const _origError = console.error;
+      const _origWarn = console.warn;
+      try { 
+        console.error = ()=>{};
+        console.warn = ()=>{};
+        const testKey = '__sf_test__' + Date.now();
+        localStorage.setItem(testKey, '1'); 
+        localStorage.getItem(testKey);
+        localStorage.removeItem(testKey); 
+      } catch(_){ 
+        _storageBlocked = true; 
+      } finally {
+        console.error = _origError;
+        console.warn = _origWarn;
+      }
+    })();
+    const safeStorage = {
+      getItem: k => { 
+        if (_storageBlocked) return _storageFallback[k] ?? null; 
+        try { return localStorage.getItem(k); } 
+        catch(_){ _storageBlocked = true; return _storageFallback[k] ?? null; } 
+      },
+      setItem: (k,v) => { 
+        if (_storageBlocked) { _storageFallback[k]=v; return; } 
+        try { localStorage.setItem(k,v); } 
+        catch(_){ _storageBlocked = true; _storageFallback[k]=v; } 
+      }
+    };
+    const COLORS = { low:'#4a6b52', medium:'#8b7355', high:'#a65d3a', critical:'#b85450' };
+    const RECONNECT_DELAYS = [1500, 3000, 6000, 12000, 20000];
+    let reconnectIndicatorVisible = false;
+    function showReconnecting(){ if (!reconnectIndicatorVisible){ reconnectIndicatorVisible=true; const el=document.getElementById('reconnecting-indicator'); if(el)el.classList.add('visible'); } }
+    function hideReconnecting(){ if (reconnectIndicatorVisible){ reconnectIndicatorVisible=false; const el=document.getElementById('reconnecting-indicator'); if(el)el.classList.remove('visible'); } }
+    async function fetchWithRetry(url, opts, maxAttempts){
+      maxAttempts = maxAttempts ?? 5;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const r = await fetch(url, opts);
+          if (r.ok) return r;
+          if (attempt === maxAttempts - 1) throw new Error('HTTP ' + r.status);
+          await new Promise(x=>setTimeout(x, RECONNECT_DELAYS[Math.min(attempt, RECONNECT_DELAYS.length-1)]));
+        } catch (err) {
+          if (attempt === 0) showReconnecting();
+          if (attempt === maxAttempts - 1) throw err;
+          await new Promise(x=>setTimeout(x, RECONNECT_DELAYS[Math.min(attempt, RECONNECT_DELAYS.length-1)]));
+        }
+      }
+      throw new Error('Max retries');
+    }
+    function fetchJsonWithRetry(url){ return fetchWithRetry(url).then(r=>r.json()); }
+    let regionsLoaded = false, eventsLoaded = false;
+    function tryHideMapSkeleton(){ if (regionsLoaded && eventsLoaded){ const el=document.getElementById('map-skeleton'); if(el){ el.classList.add('hidden'); setTimeout(()=>el.remove(), 400); } } }
+    const UZB_BOUNDS = L.latLngBounds(L.latLng(36.6, 55.6), L.latLng(45.9, 73.6));
+    const UZB_CENTER = [41.25, 64.6];
+    const map = L.map('map', { minZoom: 5, maxZoom: 18, maxBoundsViscosity: 1, zoomControl: false });
+    map.setView(UZB_CENTER, 5);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+    map.setMaxBounds(UZB_BOUNDS.pad(0.15));
+    const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:''});
+    const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:''});
+    const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:''});
+    const hybridLabelsTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{attribution:'',opacity:0.65});
+    const topographicTiles = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:''});
+
+    if (!map.getPane('maskPane')) {
+      map.createPane('maskPane');
+      map.getPane('maskPane').style.pointerEvents = 'none';
+      map.getPane('maskPane').style.zIndex = 300;
+    }
+    if (!map.getPane('incidentPane')) {
+      map.createPane('incidentPane');
+      map.getPane('incidentPane').style.pointerEvents = 'none';
+      map.getPane('incidentPane').style.zIndex = 295;
+    }
+    if (!map.getPane('riskPane')) {
+      map.createPane('riskPane');
+      map.getPane('riskPane').style.pointerEvents = 'none';
+      map.getPane('riskPane').style.zIndex = 350;
+    }
+    if (!map.getPane('focusPane')) {
+      map.createPane('focusPane');
+      map.getPane('focusPane').style.pointerEvents = 'none';
+      map.getPane('focusPane').style.zIndex = 285;
+    }
+    if (!map.getPane('cameraPane')) {
+      map.createPane('cameraPane');
+      map.getPane('cameraPane').style.zIndex = 420;
+    }
+    if (!map.getPane('forestPane')) {
+      map.createPane('forestPane');
+      map.getPane('forestPane').style.zIndex = 310;
+      map.getPane('forestPane').style.pointerEvents = 'none';
+    }
+    if (!map.getPane('landParcelsPane')) {
+      map.createPane('landParcelsPane');
+      map.getPane('landParcelsPane').style.zIndex = 450;
+      map.getPane('landParcelsPane').style.pointerEvents = 'auto';
+    }
+
+    const REGION_STYLE = { color:'#5a8f6b', weight:1.5, opacity:1, fillColor:'#1a2e2b', fillOpacity:0.04 };
+    const LIGHT_REGION_STYLE = { color:'#5a8f6b', weight:1.5, opacity:1, fillColor:'#e8f0ee', fillOpacity:0.05 };
+    const INTEL_REGION_STYLE = { color:'#5a8f6b', weight:1.5, opacity:1, fillColor:'#1a2e2b', fillOpacity:0.06 };
+    const REGION_INCIDENT = { color:'#8b5a52', weight:4, opacity:0.85, fillColor:'#4a2a28', fillOpacity:0.12 };
+    const REGION_INCIDENT_GLOW = { color:'#6b4a45', weight:18, opacity:0.18, fillOpacity:0, pane:'incidentPane' };
+    const INTEL_REGION_INCIDENT = { color:'#c45a50', weight:5, opacity:1, fillColor:'#5a2a26', fillOpacity:0.2 };
+    const INTEL_REGION_INCIDENT_GLOW = { color:'#8b4a45', weight:24, opacity:0.3, fillOpacity:0, pane:'incidentPane' };
+    const REGION_HOVER = { color:'#5a8f6b', fillOpacity:0.08, weight:1.5 };
+    const MASK_STYLE = { fillColor:'#030405', fillOpacity:0.94, weight:0, pane:'maskPane' };
+    const LIGHT_MASK_STYLE = { fillColor:'#d8dce2', fillOpacity:0.72, weight:0, pane:'maskPane' };
+    const FOCUS_HIGHLIGHT = { fillColor:'#ffffff', fillOpacity:0.03, weight:0, pane:'focusPane' };
+    const FOREST_CONTOUR_STYLE = { color:'#15803d', weight:1.2, opacity:0.85, fillColor:'#22c55e', fillOpacity:0.32, pane: 'forestPane' };
+    const FOREST_DEMO_STYLE = { color:'#166534', weight:0.8, opacity:0.7, fillColor:'#22c55e', fillOpacity:0.35, pane: 'forestPane' };
+    const LEASE_AREAS_STYLE = { color:'#0f766e', weight:2, opacity:1, fillColor:'#16a34a', fillOpacity:0.42, pane: 'landParcelsPane' };
+    const AVAILABLE_LANDS_STYLE = { color:'#4d7c0f', weight:0.9, opacity:0.7, fillColor:'#84cc16', fillOpacity:0.36, pane: 'landParcelsPane' };
+    const LEASE_SELECTED_STYLE = { color:'#16a34a', weight:4, opacity:1, fillColor:'#22c55e', fillOpacity:0.52 };
+    const AVAILABLE_SELECTED_STYLE = { color:'#ea580c', weight:4, opacity:1, fillColor:'#d6d3d1', fillOpacity:0.5 };
+    const LAND_DIMMED_STYLE = { fillOpacity:0.12 };
+    let incidentGlowLayer = null;
+    let incidentHighlightTimeout = null;
+    let regionsLayer = null;
+    let regionsGeoJson = null;
+    let maskLayer = null;
+    let forestContourLayer = null;
+    let leaseAreasLayer = null;
+    let availableLandsLayer = null;
+    let landParcelsGeoJson = null;
+    let selectedLandLayer = null;
+    let allLandLayers = [];
+    let focusHighlightLayer = null;
+    let currentRegionStyle = REGION_STYLE;
+    function applyMapTheme(mode){
+      const isIntel = mode === 'intel';
+      const isDark = mode === 'command' || isIntel;
+      const maskStyle = isDark ? MASK_STYLE : LIGHT_MASK_STYLE;
+      const regionStyle = isIntel ? INTEL_REGION_STYLE : (isDark ? REGION_STYLE : LIGHT_REGION_STYLE);
+      currentRegionStyle = regionStyle;
+      if (maskLayer) maskLayer.eachLayer(l=> l.setStyle(maskStyle));
+      if (regionsLayer) regionsLayer.eachLayer(l=> {
+        if (hovered !== l) l.setStyle(regionStyle);
+      });
+    }
+    let hovered = null;
+    let filteredRegionFeature = null;
+    let lastEventTime = null;
+    const alertedIds = new Set();
+    let autoCommandEnabled = safeStorage.getItem('smart-forest-auto-command') === 'true';
+    let lastInteractionTime = Date.now();
+    let tourActive = false;
+    let tourTimeout = null;
+    let tourStayTimeout = null;
+    let tourIndex = 0;
+    let tourStops = [];
+    let lastTourStopKey = null;
+
+    function buildMask(geojson){
+      try {
+        const flat = turf.flatten(geojson);
+        const polys = flat.features.filter(f=> f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon');
+        if (!polys.length) return null;
+        const uzb = turf.union(turf.featureCollection(polys));
+        if (!uzb) return null;
+        const world = turf.bboxPolygon([-180, -90, 180, 90]);
+        const mask = turf.difference(turf.featureCollection([world, uzb]));
+        return { mask, uzb };
+      } catch { return null; }
+    }
+    let uzbUnionGeo = null;
+    function updateGeoFocusClip(){
+      const overlay = document.getElementById('geo-focus-overlay');
+      if (!overlay || !uzbUnionGeo || !map) return;
+      const bounds = map.getBounds();
+      const sw = map.latLngToContainerPoint(bounds.getSouthWest());
+      const ne = map.latLngToContainerPoint(bounds.getNorthEast());
+      const pad = 20;
+      const outer = [[sw.x-pad,sw.y+pad],[ne.x+pad,sw.y+pad],[ne.x+pad,ne.y-pad],[sw.x-pad,ne.y-pad],[sw.x-pad,sw.y+pad]];
+      const geom = uzbUnionGeo.geometry;
+      const coords = geom.coordinates;
+      const ring = geom.type === 'Polygon' ? coords[0] : (coords[0] && coords[0][0] ? coords[0][0] : coords[0]);
+      if (!ring || !ring.length) return;
+      const pts = ring.map(c=>{
+        const p = map.latLngToContainerPoint(L.latLng(c[1], c[0]));
+        return [p.x, p.y];
+      });
+      pts.push(pts[0]);
+      const outerStr = outer.map(([x,y])=>Math.round(x)+' '+Math.round(y)).join(',');
+      const innerStr = pts.map(([x,y])=>Math.round(x)+' '+Math.round(y)).join(',');
+      overlay.style.clipPath = `polygon(evenodd, ${outerStr}, ${innerStr})`;
+      overlay.style.display = 'block';
+    }
+
+    function highlightRegionForIncident(lng, lat){
+      if (incidentHighlightTimeout) clearTimeout(incidentHighlightTimeout);
+      if (incidentGlowLayer) { map.removeLayer(incidentGlowLayer); incidentGlowLayer = null; }
+      const feature = regionsGeoJson?.features?.find(f=> pointInFeature([lng, lat], f));
+      if (!feature || !regionsLayer) return;
+      let targetLayer = null;
+      regionsLayer.eachLayer(l=>{ if (l.feature === feature) targetLayer = l; });
+      if (!targetLayer) return;
+      const isIntel = document.body.classList.contains('intel');
+      const incidentGlow = isIntel ? INTEL_REGION_INCIDENT_GLOW : REGION_INCIDENT_GLOW;
+      const incidentStyle = isIntel ? INTEL_REGION_INCIDENT : REGION_INCIDENT;
+      incidentGlowLayer = L.geoJSON(feature, { style: incidentGlow }).addTo(map);
+      incidentGlowLayer.bringToBack();
+      targetLayer.setStyle(incidentStyle);
+      targetLayer.bringToFront();
+      incidentHighlightTimeout = setTimeout(()=>{
+        if (incidentGlowLayer) { map.removeLayer(incidentGlowLayer); incidentGlowLayer = null; }
+        targetLayer.setStyle(currentRegionStyle);
+        incidentHighlightTimeout = null;
+      }, 7200);
+    }
+
+    function pointInFeature(lngLat, feature){
+      const pt = turf.point(lngLat);
+      const geom = feature.geometry;
+      if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') return turf.booleanPointInPolygon(pt, turf.feature(geom));
+      if (geom.type === 'GeometryCollection') {
+        for (const g of geom.geometries) {
+          if ((g.type === 'Polygon' || g.type === 'MultiPolygon') && turf.booleanPointInPolygon(pt, turf.feature(g))) return true;
+        }
+      }
+      return false;
+    }
+
+    let statsCache = { events: null, result: null };
+    function computeRegionStats(events){
+      if (events === statsCache.events) return statsCache.result;
+      let total = 0, critical = 0, fires = 0, illegalLogging = 0;
+      for (let i = 0; i < events.length; i++) {
+        const e = events[i];
+        total++;
+        if ((e.severity||'').toLowerCase() === 'critical') critical++;
+        const t = (e.title||'').toLowerCase();
+        if (t.includes('fire')) fires++;
+        if (t.includes('illegal') && t.includes('logging')) illegalLogging++;
+      }
+      statsCache = { events, result: { total, critical, fires, illegalLogging } };
+      return statsCache.result;
+    }
+
+    function syncMarkersToEvents(events){
+      const toShow = getEventsForMarkers(events);
+      const latestId = toShow.length ? toShow.reduce((a,b)=> (new Date(b.createdAt||0) > new Date(a.createdAt||0) ? b : a)).id : null;
+      markerLayer.clearLayers();
+      renderedIds.clear();
+      toShow.forEach(e=>{ createMarker(e, false, e.id === latestId); renderedIds.add(e.id); });
+      const badge = document.getElementById('badge');
+      const ac=document.body.classList.contains('dark')?'#6b9a75':'#166534';
+      badge.innerHTML = `Hodisalar: <b>${events.length}</b>${events.length > MARKER_LIMIT ? ` <span style="font-size:10px;color:${ac}">(${MARKER_LIMIT} ko'rsatilmoqda)</span>` : ''}${filteredRegionFeature ? ` <span style="font-size:11px;color:${ac}">(filtrlangan)</span>` : ` <span style="font-size:11px;color:${ac}">● Canli</span>`}`;
+    }
+
+    function updateStatsPanel(events){
+      const panel = document.getElementById('stats-panel');
+      if (!filteredRegionFeature) { panel.classList.remove('visible'); return; }
+      const s = computeRegionStats(events);
+      const name = filteredRegionFeature.properties?.ADM1_EN || filteredRegionFeature.properties?.name || 'Region';
+      document.getElementById('stats-region-name').textContent = name;
+      const rows = panel.querySelectorAll('.stats-row');
+      if (rows[0]) rows[0].querySelector('span:last-child').textContent = s.total;
+      if (rows[1]) rows[1].querySelector('span:last-child').textContent = s.critical;
+      if (rows[2]) rows[2].querySelector('span:last-child').textContent = s.fires;
+      if (rows[3]) rows[3].querySelector('span:last-child').textContent = s.illegalLogging;
+      panel.classList.add('visible');
+    }
+
+    function updateCommandBar(){
+      const events = typeof allEvents !== 'undefined' ? allEvents : [];
+      const sensorKeys = new Set();
+      events.forEach(e=> sensorKeys.add(`${e.latitude.toFixed(3)},${e.longitude.toFixed(3)}`));
+      const critical = events.filter(e=>(e.severity||'').toLowerCase()==='critical').length;
+      let regionsOnline = 0;
+      if (regionsGeoJson?.features?.length) {
+        regionsOnline = regionsGeoJson.features.filter(f=> 
+          events.some(e=> pointInFeature([e.longitude, e.latitude], f))
+        ).length;
+      }
+      const sensorsEl = document.getElementById('cmd-sensors');
+      const criticalEl = document.getElementById('cmd-critical');
+      const regionsEl = document.getElementById('cmd-regions');
+      const lastEl = document.getElementById('cmd-last');
+      if (sensorsEl) sensorsEl.textContent = sensorKeys.size.toLocaleString();
+      if (criticalEl) {
+        criticalEl.textContent = critical;
+        criticalEl.classList.toggle('critical-active', critical > 0);
+      }
+      if (regionsEl) regionsEl.textContent = regionsGeoJson ? `${regionsOnline} / ${regionsGeoJson.features?.length||0}` : '—';
+      if (lastEl) {
+        if (lastEventTime) {
+          const s = Math.floor((Date.now() - lastEventTime) / 1000);
+          lastEl.textContent = s < 60 ? `${s} sek oldin` : new Date(lastEventTime).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        } else {
+          lastEl.textContent = '—';
+        }
+      }
+    }
+
+    function applyRegionFilter(){
+      const events = filteredRegionFeature ? allEvents.filter(e=> pointInFeature([e.longitude, e.latitude], filteredRegionFeature)) : allEvents;
+      syncMarkersToEvents(events);
+      if (map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(events));
+      updateStatsPanel(events);
+    }
+
+    function loadRegions(){
+      const local = '/public/geo/uzbekistan_regions.geojson';
+      const remote = 'https://raw.githubusercontent.com/akbartus/GeoJSON-Uzbekistan/main/geojson/uzbekistan_regional.geojson';
+      fetch(local).then(r=> r.ok ? r.json() : fetchWithRetry(remote).then(r2=>r2.json())).catch(()=> fetchWithRetry(remote).then(r2=>r2.json())).then(geojson=>{
+        hideReconnecting();
+        regionsGeoJson = geojson;
+        applyMapTheme(document.body.classList.contains('command-mode') ? 'command' : document.body.classList.contains('intel') ? 'intel' : 'national');
+        if (maskLayer) { map.removeLayer(maskLayer); maskLayer = null; }
+        const built = buildMask(geojson);
+        if (built && built.mask) {
+          uzbUnionGeo = built.uzb;
+          if (focusHighlightLayer) { map.removeLayer(focusHighlightLayer); focusHighlightLayer = null; }
+          focusHighlightLayer = L.geoJSON(built.uzb, { style: FOCUS_HIGHLIGHT }).addTo(map);
+          focusHighlightLayer.bringToBack();
+          maskLayer = L.geoJSON(built.mask, { style: document.body.classList.contains('dark') ? MASK_STYLE : LIGHT_MASK_STYLE }).addTo(map);
+          maskLayer.bringToBack();
+          let fo = document.getElementById('geo-focus-overlay');
+          if (!fo) { fo = document.createElement('div'); fo.id = 'geo-focus-overlay'; map.getContainer().appendChild(fo); }
+          fo.style.display = 'none';
+          updateGeoFocusClip();
+          map.off('moveend zoomend', updateGeoFocusClip);
+          map.on('moveend zoomend', updateGeoFocusClip);
+        }
+        if (regionsLayer) { map.removeLayer(regionsLayer); regionsLayer = null; }
+        regionsLayer = L.geoJSON(geojson, {
+          style: currentRegionStyle,
+          onEachFeature: function(feature, layer){
+            const name = feature.properties?.ADM1_EN || feature.properties?.name || 'Noma\'lum';
+            const onRegionClick = function(){
+              if (filteredRegionFeature === feature) { filteredRegionFeature = null; } else { filteredRegionFeature = feature; }
+              applyRegionFilter();
+            };
+            const bind = function(l){
+              l.on({ mouseover: function(){ if (hovered) hovered.setStyle(currentRegionStyle); hovered=layer; layer.setStyle(REGION_HOVER); layer.bringToFront(); map.getContainer().style.cursor='pointer'; }, mouseout: function(){ if (hovered===layer) layer.setStyle(currentRegionStyle); hovered=null; map.getContainer().style.cursor=''; }, click: onRegionClick });
+            };
+            if (layer.eachLayer) layer.eachLayer(bind); else bind(layer);
+          }
+        }).addTo(map);
+        regionsLayer.bringToBack();
+        const bounds = regionsLayer.getBounds();
+        if (bounds.isValid()) {
+          const maxBoundsPad = bounds.pad(0.08);
+          const introStillVisible = document.getElementById('intro-overlay');
+          if (!introStillVisible) {
+            map.fitBounds(bounds, { padding: [24, 24], animate: true, duration: 0.8 });
+          }
+          map.setMaxBounds(maxBoundsPad);
+          map.setMinZoom(map.getZoom());
+        }
+        updateCommandBar();
+        if (showRiskLayer) updateRiskLayer();
+        cameraLayer.clearLayers();
+        CAMERAS.forEach(c=> createCameraMarker(c));
+        liveCamerasData = generateLiveCameras();
+        if (showCamerasLayer) {
+          if (cameraClusterLayer) map.removeLayer(cameraClusterLayer);
+          cameraClusterLayer = buildCameraClusterLayer();
+          map.addLayer(cameraClusterLayer);
+          if (map.hasLayer(markerLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
+          document.getElementById('map')?.classList.add('cameras-active');
+        }
+        regionsLoaded = true;
+        tryHideMapSkeleton();
+        if (window.__applyBoundaryFromPanel) window.__applyBoundaryFromPanel();
+      }).catch(()=>{ hideReconnecting(); regionsLoaded = true; tryHideMapSkeleton(); });
+    }
+    function buildLandPopupContent(f){
+      const p = f.properties || {};
+      const region = p.region || '—';
+      const areaHa = p.area_ha != null ? Number(p.area_ha).toLocaleString() : '—';
+      const isLeased = p.lease_status === 'leased';
+      const landType = isLeased ? 'Ijara' : 'Bo\'sh';
+      const holder = p.lease_holder || '—';
+      const contractNumber = p.contract_number || p.contract_id || '—';
+      const expiry = p.contract_expiry ? new Date(p.contract_expiry).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
+      const startDate = p.contract_start ? new Date(p.contract_start).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
+      const expiryDate = new Date(p.contract_expiry || 0);
+      const now = new Date();
+      let statusKey = 'free', statusLabel = 'Bo\'sh';
+      let remainingText = '—';
+      if (isLeased) {
+        statusKey = expiryDate >= now ? 'active' : 'expired';
+        statusLabel = expiryDate >= now ? 'Faol' : 'Muddati tugagan';
+        const diffMs = expiryDate - now;
+        const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+        if (diffDays > 0) {
+          if (diffDays >= 365) {
+            const years = Math.floor(diffDays / 365);
+            const months = Math.floor((diffDays % 365) / 30);
+            remainingText = months > 0 ? years + ' yil, ' + months + ' oy qoldi' : years + ' yil qoldi';
+          } else if (diffDays >= 30) {
+            const months = Math.floor(diffDays / 30);
+            const days = diffDays % 30;
+            remainingText = days > 0 ? months + ' oy, ' + days + ' kun qoldi' : months + ' oy qoldi';
+          } else {
+            remainingText = diffDays + ' kun qoldi';
+          }
+        } else {
+          remainingText = 'Muddati tugagan';
+        }
+      }
+      const badgeCls = statusKey;
+      const parcelName = p.name || p.id || '—';
+      const rows = [
+        ['Maydon nomi', parcelName],
+        ['Viloyat', region],
+        ['Maydon', areaHa + ' ga'],
+        ['Yer turi', landType],
+        ['Ijara holati', isLeased ? 'Ijarada' : 'Bo\'sh'],
+        ...(isLeased ? [
+          ['Ijarachi (tashkilot)', holder],
+          ['Shartnoma raqami', contractNumber],
+          ['Ijara boshlanishi', startDate],
+          ['Ijara tugash sanasi', expiry],
+          ['Ijara qolgan muddati', remainingText],
+          ...(p.lease_contact ? [['Aloqa', p.lease_contact]] : [])
+        ] : [])
+      ];
+      const rowsHtml = rows.map(([lbl, val]) => `<div class="land-popup-row"><span>${escapeHtml(lbl)}</span><strong>${escapeHtml(String(val))}</strong></div>`).join('');
+      const footer = isLeased
+        ? `<div class="land-popup-btn active">Ijara faol</div>`
+        : `<button type="button" class="land-popup-btn lease">Ijara uchun mavjud</button>`;
+      return `<div class="land-popup"><div class="land-popup-header"><div class="land-popup-title">${escapeHtml(parcelName)}</div><span class="land-popup-badge ${badgeCls}">${escapeHtml(statusLabel)}</span></div><div class="land-popup-body">${rowsHtml}</div><div class="land-popup-footer">${footer}</div></div>`;
+    }
+    function applyLandSelection(selected){
+      selectedLandLayer = selected || null;
+      const isLease = l=> l._landType === 'lease';
+      allLandLayers.forEach(l=>{
+        const path = l._pathEl || l.getElement?.();
+        if (path) path.classList.remove('selected','available-selected');
+        if (l === selected) {
+          const style = isLease(l) ? LEASE_SELECTED_STYLE : AVAILABLE_SELECTED_STYLE;
+          l.setStyle(style);
+          l.bringToFront();
+          if (path) path.classList.add('selected', isLease(l) ? '' : 'available-selected');
+        } else {
+          const base = isLease(l) ? LEASE_AREAS_STYLE : AVAILABLE_LANDS_STYLE;
+          const dimmed = selected ? { ...base, fillOpacity: 0.12 } : base;
+          l.setStyle(dimmed);
+          if (path) path.classList.remove('selected','available-selected');
+        }
+      });
+      if (!selected) allLandLayers.forEach(l=> l.bringToBack());
+    }
+    function seededRandom(seed){
+      let s = 0; for (let i = 0; i < (seed||'').length; i++) s = (s * 31 + seed.charCodeAt(i)) | 0;
+      return function(){ s = (s * 1664525 + 1013904223) | 0; return (s >>> 0) / 4294967296; };
+    }
+    function chaikinSmooth(ring, iterations){
+      for (let i = 0; i < iterations; i++) {
+        const next = [];
+        for (let j = 0; j < ring.length - 1; j++) {
+          const [x0,y0] = ring[j], [x1,y1] = ring[j+1];
+          next.push([x0*0.75 + x1*0.25, y0*0.75 + y1*0.25]);
+          next.push([x0*0.25 + x1*0.75, y0*0.25 + y1*0.75]);
+        }
+        next.push(ring[0]);
+        ring = next;
+      }
+      return ring;
+    }
+    function makeIrregularPolygon(feature){
+      const geom = feature.geometry;
+      if (!geom || geom.type !== 'Polygon' || !geom.coordinates?.[0]?.length) return feature;
+      const ring = geom.coordinates[0].slice(0, -1);
+      const seed = (feature.properties?.id || '') + (feature.properties?.region || '');
+      const rnd = seededRandom(seed);
+      const newRing = [];
+      const jitterBase = 0.003;
+      const subdivs = 4;
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i], b = ring[(i+1) % ring.length];
+        const edgeLen = Math.hypot(b[0]-a[0], b[1]-a[1]);
+        const jitter = jitterBase * (0.6 + edgeLen * 3);
+        newRing.push([a[0] + (rnd()-0.5)*jitter*0.4, a[1] + (rnd()-0.5)*jitter*0.4]);
+        for (let k = 1; k < subdivs; k++) {
+          const t = k / subdivs;
+          const x = a[0] + (b[0]-a[0])*t, y = a[1] + (b[1]-a[1])*t;
+          const dx = (b[0]-a[0]), dy = (b[1]-a[1]);
+          const hypot = Math.hypot(dx, dy) || 1;
+          const nx = -dy/hypot, ny = dx/hypot;
+          const tx = dx/hypot, ty = dy/hypot;
+          const perp = (rnd() - 0.5) * 2 * jitter * (0.6 + rnd()*0.8);
+          const tang = (rnd() - 0.5) * jitter * 0.25;
+          newRing.push([x + nx*perp + tx*tang, y + ny*perp + ty*tang]);
+        }
+      }
+      const closed = [...newRing, [newRing[0][0], newRing[0][1]]];
+      const smoothed = chaikinSmooth(closed, 2);
+      return { ...feature, geometry: { type: 'Polygon', coordinates: [smoothed] } };
+    }
+    function unionAllParcels(features){
+      if (!features.length || typeof turf === 'undefined') return null;
+      const polys = features.map(f=> turf.feature(f.geometry)).filter(f=> f.geometry && (f.geometry.type==='Polygon'||f.geometry.type==='MultiPolygon'));
+      if (!polys.length) return null;
+      if (polys.length === 1) return polys[0].geometry;
+      try {
+        const fc = turf.featureCollection(polys);
+        const u = turf.union(fc);
+        return u?.geometry || polys[0].geometry;
+      } catch(_){
+        try { return polys.reduce((a,p)=> turf.union(a,p), polys[0])?.geometry || polys[0].geometry; } catch(__){ return polys[0].geometry; }
+      }
+    }
+    const FOREST_ZONES_URL = '/public/geo/forest_zones_demo.json';
+    function loadForestZones(){
+      return fetch(FOREST_ZONES_URL).then(r=>r.ok?r.json():Promise.reject()).then(geojson=>{
+        const features = (geojson.features || []).map(f=> makeIrregularPolygon({...f, properties: {...(f.properties||{}), type: 'forest_demo'}}));
+        return features.length ? { type:'FeatureCollection', features } : null;
+      }).catch(()=>null);
+    }
+    const UZ_REGIONS_URL = '/public/geo/uzbekistan_regions.geojson';
+    function loadLandParcels(){
+      Promise.all([
+        loadForestZones(),
+        fetch('/public/geo/land_parcels.json').then(r=>r.ok?r.json():Promise.reject()),
+        fetch(UZ_REGIONS_URL).then(r=>r.ok?r.json():Promise.resolve(null)).catch(()=>null)
+      ]).then(([forestZones, geojson, regionsGeo])=>{
+        landParcelsGeoJson = geojson;
+        selectedLandLayer = null;
+        allLandLayers = [];
+        let features = (geojson.features || []).map(makeIrregularPolygon);
+        const leaseFeatures = features.filter(f=>(f.properties||{}).lease_status==='leased');
+        const availableFeatures = features.filter(f=>(f.properties||{}).lease_status!=='leased');
+        let uzbBoundary = null;
+        if (regionsGeo && typeof turf !== 'undefined') {
+          try {
+            const flat = turf.flatten(regionsGeo);
+            const polys = flat.features.filter(f=> f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon');
+            if (polys.length) uzbBoundary = turf.union(turf.featureCollection(polys));
+          } catch(_){}
+        }
+        const expandAndClipToUzb = (f)=>{
+          if (!uzbBoundary || typeof turf.buffer !== 'function' || typeof turf.intersect !== 'function') return f;
+          try {
+            const feat = turf.feature(f.geometry);
+            const buffered = turf.buffer(feat, 20, { units: 'kilometers' });
+            const clipped = turf.intersect(turf.featureCollection([uzbBoundary, buffered]));
+            if (!clipped?.geometry) return f;
+            return { ...f, geometry: clipped.geometry };
+          } catch(_){ return f; }
+        };
+        let forestGeo = null;
+        if (forestZones?.features?.length) {
+          const expanded = uzbBoundary ? forestZones.features.map(expandAndClipToUzb) : forestZones.features;
+          forestGeo = { type:'FeatureCollection', features: expanded };
+        } else {
+          const forestGeometry = unionAllParcels(features);
+          forestGeo = forestGeometry ? { type:'FeatureCollection', features: [{ type:'Feature', geometry: forestGeometry, properties:{} }] } : null;
+        }
+        const forestStyle = forestZones ? FOREST_DEMO_STYLE : FOREST_CONTOUR_STYLE;
+        if (forestContourLayer) { map.removeLayer(forestContourLayer); forestContourLayer = null; }
+        if (leaseAreasLayer) { map.removeLayer(leaseAreasLayer); leaseAreasLayer = null; }
+        if (availableLandsLayer) { map.removeLayer(availableLandsLayer); availableLandsLayer = null; }
+        forestContourLayer = forestGeo ? L.geoJSON(forestGeo, { style: forestStyle }) : L.layerGroup();
+        forestContourLayer.eachLayer(function(l){ l.on('add', function(){ const el = l.getElement?.(); if (el) el.classList.add('land-parcel-path','forest-contour'); }); });
+        forestContourLayer.bringToBack();
+        function setupLandLayer(layer,feature,baseStyle,isLease){
+          layer._landType = isLease ? 'lease' : 'available';
+          layer._feature = feature;
+          const parcelName = feature.properties?.name || feature.properties?.id || '';
+          layer.on('add', function(){ 
+            const el = layer.getElement?.(); 
+            if (el) { 
+              el.classList.add('land-parcel-path'); 
+              layer._pathEl = el; 
+              el.style.pointerEvents = 'auto';
+              el.style.cursor = 'pointer';
+              el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                layer.bringToFront();
+                applyLandSelection(layer === selectedLandLayer ? null : layer);
+                try { layer.openPopup(); } catch(_){}
+              });
+            } 
+          });
+          allLandLayers.push(layer);
+          layer.on({ 
+            mouseover: function(){ 
+              if (layer !== selectedLandLayer) layer.setStyle({ ...baseStyle, fillOpacity: selectedLandLayer ? 0.14 : (isLease ? 0.52 : 0.46) }); 
+              layer.bringToFront(); 
+              map.getContainer().style.cursor='pointer'; 
+            }, 
+            mouseout: function(){ 
+              if (layer !== selectedLandLayer) layer.setStyle(selectedLandLayer ? { ...baseStyle, ...LAND_DIMMED_STYLE } : baseStyle); 
+              map.getContainer().style.cursor=''; 
+            } 
+          });
+          layer.on('click', function(e){
+            if (e) L.DomEvent.stopPropagation(e);
+            layer.bringToFront();
+            applyLandSelection(layer === selectedLandLayer ? null : layer);
+            try { layer.openPopup(); } catch(_){}
+          });
+          if (parcelName) layer.bindTooltip(parcelName, { permanent: false, direction: 'center', className: 'land-parcel-tooltip', offset: [0, 0] });
+          layer.bindPopup(buildLandPopupContent(feature),{ maxWidth:340, className:'land-popup-wrapper', closeButton:true, autoClose:true });
+          layer.on('popupopen', function(){ applyLandSelection(layer); });
+          layer.on('popupclose', function(){ if (selectedLandLayer === layer) applyLandSelection(null); });
+        }
+        let forestUnionGeom = null;
+        const forestFeaturesForUnion = forestGeo?.features || forestZones?.features || [];
+        if (forestFeaturesForUnion.length && typeof turf !== 'undefined') {
+          try { forestUnionGeom = unionAllParcels(forestFeaturesForUnion); } catch(_){}
+        } else if (!forestZones && features.length) {
+          forestUnionGeom = unionAllParcels(features);
+        }
+        const forestFeat = forestUnionGeom ? turf.feature(forestUnionGeom) : null;
+        const clipToForest = (f)=>{
+          if (!forestFeat || typeof turf.intersect !== 'function') return f;
+          try {
+            const inter = turf.intersect(turf.featureCollection([forestFeat, turf.feature(f.geometry)]));
+            if (!inter?.geometry) return f;
+            const ring = inter.geometry.type === 'Polygon' ? inter.geometry.coordinates?.[0] : (inter.geometry.type === 'MultiPolygon' && inter.geometry.coordinates?.[0]?.[0]) ? inter.geometry.coordinates[0][0] : null;
+            if (!ring || ring.length < 4) return f;
+            return { ...f, geometry: inter.geometry };
+          } catch(_){ return f; }
+        };
+        const leaseClipped = forestFeat ? leaseFeatures.map(clipToForest) : leaseFeatures;
+        let availableClipped = forestFeat ? availableFeatures.map(clipToForest) : availableFeatures;
+        const doDifference = typeof turf !== 'undefined' && typeof turf.difference === 'function'
+          ? (a, b) => turf.difference(a, b)
+          : (a, b) => { try { return typeof turf !== 'undefined' && turf.difference(turf.featureCollection([a, b])); } catch(_){ return null; } };
+        function diffToFeatures(diff, props){
+          if (!diff?.geometry) return [];
+          if (diff.geometry.type === 'Polygon' && diff.geometry.coordinates?.[0]?.length >= 4) return [{ type:'Feature', properties: props, geometry: diff.geometry }];
+          if (diff.geometry.type === 'MultiPolygon' && diff.geometry.coordinates?.length) return diff.geometry.coordinates.filter(p=> p?.[0]?.length >= 4).map(poly=> ({ type:'Feature', properties: props, geometry: { type: 'Polygon', coordinates: poly } }));
+          return [];
+        }
+        let leaseExclusive = [];
+        if (leaseClipped.length && typeof turf !== 'undefined' && typeof turf.union === 'function') {
+          try {
+            let soFarUnion = null;
+            leaseClipped.forEach(f=>{
+              const props = f.properties || {};
+              const fFeat = turf.feature(f.geometry);
+              let parts = [];
+              if (!soFarUnion) parts = [{ ...f }];
+              else {
+                const diff = doDifference(fFeat, turf.feature(soFarUnion));
+                const feats = diffToFeatures(diff, props);
+                parts = feats.length ? feats.map(x=> ({ ...x, properties: { ...(x.properties || {}), ...props } })) : [];
+              }
+              leaseExclusive.push(...parts);
+              soFarUnion = soFarUnion ? (turf.union(turf.feature(soFarUnion), fFeat)?.geometry || soFarUnion) : f.geometry;
+            });
+          } catch(_){ leaseExclusive = leaseClipped; }
+        } else { leaseExclusive = leaseClipped; }
+        if (leaseExclusive.length && typeof turf !== 'undefined' && typeof turf.union === 'function') {
+          try {
+            const leasedUnion = unionAllParcels(leaseExclusive);
+            const leasedFeat = leasedUnion ? turf.feature(leasedUnion) : null;
+            if (leasedFeat) {
+              const out = [];
+              availableClipped.forEach(f=>{
+                try {
+                  const aFeat = turf.feature(f.geometry);
+                  const diff = doDifference(aFeat, leasedFeat);
+                  const feats = diffToFeatures(diff, f.properties || {});
+                  feats.forEach(x=> out.push({ ...f, geometry: x.geometry, properties: x.properties || f.properties }));
+                } catch(_){}
+              });
+              availableClipped = out;
+            }
+          } catch(_){}
+        }
+        const leaseFC = { type:'FeatureCollection', features: leaseExclusive };
+        const availableFC = { type:'FeatureCollection', features: availableClipped };
+        leaseAreasLayer = L.geoJSON(leaseFC,{ style: LEASE_AREAS_STYLE, interactive: true, onEachFeature: (f,l)=> setupLandLayer(l,f,LEASE_AREAS_STYLE,true) });
+        availableLandsLayer = L.geoJSON(availableFC,{ style: AVAILABLE_LANDS_STYLE, interactive: true, onEachFeature: (f,l)=> setupLandLayer(l,f,AVAILABLE_LANDS_STYLE,false) });
+        map.off('click.landPopupClose');
+        map.on('click.landPopupClose', function(e){
+          const t = e.originalEvent?.target;
+          if (t?.closest?.('path.land-parcel-path') || t?.closest?.('.land-popup') || t?.closest?.('.leaflet-popup')) return;
+          allLandLayers.forEach(l=>{ try { if (l.getPopup?.()?.isOpen?.()) l.closePopup(); } catch(_){} });
+          applyLandSelection(null);
+        });
+        if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+      }).catch(()=>{});
+    }
+    const savedMapMode = safeStorage.getItem('smart-forest-map-mode') || 'national';
+    const validMode = ['national','command','intel'].includes(savedMapMode) ? savedMapMode : 'national';
+    const INTENSITY = { low: 0.2, medium: 0.5, high: 0.8, critical: 1 };
+    const RISK_GRADIENT = { 0: 'rgba(90,107,93,0.25)', 0.35: 'rgba(139,115,85,0.4)', 0.55: 'rgba(166,93,58,0.5)', 0.75: 'rgba(139,74,69,0.6)', 1: 'rgba(100,50,48,0.75)' };
+    const MARKER_LIMIT = 300;
+    function getEventsForMarkers(events){
+      const prio = e=> ((s)=>(s==='critical'?4:s==='high'?3:s==='medium'?2:1))((e.severity||'').toLowerCase());
+      const sorted = [...events].sort((a,b)=> (prio(b)-prio(a)) || (new Date(b.createdAt||0) - new Date(a.createdAt||0)));
+      return sorted.slice(0, MARKER_LIMIT);
+    }
+    const markerLayer = L.markerClusterGroup({
+      maxClusterRadius: 100,
+      chunkedLoading: true,
+      disableClusteringAtZoom: 18,
+      spiderfyOnMaxZoom: false,
+      showCoverageOnHover: false,
+      animate: false
+    }).addTo(map);
+    const CAMERA_STREAM_URL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+    let liveCamerasData = [];
+    let cameraClusterLayer = null;
+    let showCamerasLayer = safeStorage.getItem('smart-forest-cameras') === 'true';
+    const CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="4"/><line x1="2" y1="10" x2="2" y2="14"/><line x1="22" y1="10" x2="22" y2="14"/></svg>';
+    function generateLiveCameras(){
+      if (!regionsGeoJson?.features?.length) return [];
+      const cams = []; const b = UZB_BOUNDS; const names = ['North','South','East','West','Central','Alpha','Bravo','Site','Outpost','Tower','Grid','Sector','Unit'];
+      let attempts = 0;
+      while (cams.length < 55 && attempts < 500) {
+        attempts++;
+        const lat = b.getSouth() + Math.random()*(b.getNorth()-b.getSouth());
+        const lng = b.getWest() + Math.random()*(b.getEast()-b.getWest());
+        if (!regionsGeoJson.features.some(f=> pointInFeature([lng,lat],f))) continue;
+        const region = getRegionForPoint(lng, lat) || 'Uzbekistan';
+        const nameIdx = cams.length % names.length;
+        const suffix = Math.floor(cams.length / names.length) + 1;
+        const isOnline = Math.random() > 0.15;
+        cams.push({ id: 'live-'+cams.length, name: `${region} ${names[nameIdx]} ${suffix}`, latitude: lat, longitude: lng, status: isOnline ? 'online' : 'offline', lastPing: new Date(Date.now() - Math.random()*3600000).toISOString(), streamUrl: isOnline ? CAMERA_STREAM_URL : null });
+      }
+      return cams;
+    }
+    function createLiveCameraMarker(cam){
+      const div = document.createElement('div');
+      div.className = 'live-cam-marker' + (cam.status === 'offline' ? ' offline' : '');
+      div.innerHTML = CAM_SVG;
+      const icon = L.divIcon({ html: div, className: '', iconSize: [26,26], iconAnchor: [13,13] });
+      const m = L.marker([cam.latitude, cam.longitude], { icon });
+      m._camera = cam;
+      const popupContent = document.createElement('div');
+      popupContent.className = 'cam-popup-card';
+      const lastPingStr = cam.lastPing ? new Date(cam.lastPing).toLocaleString(undefined,{dateStyle:'short',timeStyle:'short'}) : '—';
+      popupContent.innerHTML = `
+        <div class="cam-name">📹 ${escapeHtml(cam.name)}</div>
+        <div class="cam-status ${cam.status}">${cam.status==='online'?'🟢':'🔴'} ${cam.status==='online'?'Onlayn':'Offlayn'}</div>
+        <div class="cam-status" style="color:rgba(255,255,255,.5)">🕒 So'nggi signal: ${escapeHtml(lastPingStr)}</div>
+        <div class="cam-preview">Canli oqim mavjud</div>`;
+      m.bindPopup(popupContent, { maxWidth: 300, className: 'cam-popup', autoPan: true });
+      m.on('click', ()=>{
+        map.flyTo([cam.latitude, cam.longitude], 12 + Math.floor(Math.random()*2), { duration: 0.8, easeLinearity: 0.2 });
+        openCameraPanel(cam);
+      });
+      return m;
+    }
+    function buildCameraClusterLayer(){
+      const layer = L.markerClusterGroup({
+        maxClusterRadius: 80,
+        chunkedLoading: true,
+        disableClusteringAtZoom: 16,
+        spiderfyOnMaxZoom: false,
+        showCoverageOnHover: false,
+        animate: true,
+        iconCreateFunction: function(cluster){
+          const count = cluster.getChildCount();
+          const size = count < 10 ? 28 : count < 100 ? 32 : 36;
+          const div = document.createElement('div');
+          div.className = 'cam-cluster';
+          div.style.width = size + 'px';
+          div.style.height = size + 'px';
+          div.style.minWidth = size + 'px';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.justifyContent = 'center';
+          div.style.fontSize = (count < 10 ? 12 : count < 100 ? 11 : 10) + 'px';
+          div.textContent = count;
+          return L.divIcon({ html: div, className: '', iconSize: [size, size], iconAnchor: [size/2, size/2] });
+        }
+      });
+      liveCamerasData.forEach(cam=> layer.addLayer(createLiveCameraMarker(cam)));
+      return layer;
+    }
+    function focusCameraWithPopup(cam){
+      const markers = cameraClusterLayer?.getAllChildMarkers?.() ?? cameraClusterLayer?.getLayers?.() ?? [];
+      const marker = markers.find(l=> l._camera?.id === cam.id);
+      if (marker) {
+        const el = marker.getElement?.();
+        const inner = el?.querySelector?.('.live-cam-marker');
+        if (inner) { inner.classList.add('highlight'); setTimeout(()=> inner.classList.remove('highlight'), 600); }
+        map.flyTo([cam.latitude, cam.longitude], 13, { duration: 1, easeLinearity: 0.2 });
+        setTimeout(()=> openCameraPanel(cam), 500);
+      }
+    }
+    const CAMERAS = [
+      { id: 'cam-1', latitude: 41.31, longitude: 69.28, label: 'Tashkent North', streamUrl: CAMERA_STREAM_URL },
+      { id: 'cam-2', latitude: 39.65, longitude: 66.95, label: 'Samarkand East', streamUrl: CAMERA_STREAM_URL },
+      { id: 'cam-3', latitude: 40.38, longitude: 71.78, label: 'Fergana Valley', streamUrl: CAMERA_STREAM_URL },
+      { id: 'cam-4', latitude: 39.77, longitude: 64.42, label: 'Bukhara West', streamUrl: CAMERA_STREAM_URL },
+      { id: 'cam-5', latitude: 41.55, longitude: 60.62, label: 'Karakalpakstan', streamUrl: CAMERA_STREAM_URL },
+      { id: 'cam-6', latitude: 37.22, longitude: 67.28, label: 'Surxondaryo South', streamUrl: CAMERA_STREAM_URL },
+    ];
+    const cameraLayer = L.layerGroup().addTo(map);
+    let cameraPanel = null;
+    const MAX_CAMERA_STREAMS = 2;
+    const heatGradient = { 0: 'rgba(61,90,69,.25)', 0.2: 'rgba(61,90,69,.4)', 0.4: 'rgba(90,122,90,.5)', 0.6: 'rgba(139,115,85,.55)', 0.8: 'rgba(154,107,74,.6)', 1: 'rgba(139,74,69,.65)' };
+    let heatLayer = L.heatLayer([], { radius: 55, blur: 48, maxZoom: 17, minOpacity: 0.22, gradient: heatGradient });
+    let riskLayer = L.heatLayer([], { radius: 48, blur: 32, maxZoom: 17, gradient: RISK_GRADIENT, max: 1, minOpacity: 0.4, pane: 'riskPane' });
+    let showRiskLayer = safeStorage.getItem('smart-forest-ai-risk') !== 'false';
+    let riskLastUpdate = 0;
+    let demoMode = safeStorage.getItem('smart-forest-demo') === 'true';
+    let riskUpdateInterval = 15000;
+    let allEvents = [];
+    let renderedIds = new Set();
+    let isFirstLoad = true;
+    let showHeatmap = false;
+    setMapMode(validMode);
+
+    function color(s){ return COLORS[(s||'').toLowerCase()] || COLORS.medium; }
+    let _audioContext = null;
+    function initAudioOnUserGesture(){
+      if (_audioContext) return;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      _audioContext = new Ctx();
+      if (_audioContext.state === 'suspended') _audioContext.resume().catch(()=>{});
+    }
+    document.addEventListener('click', initAudioOnUserGesture, { once: true, passive: true });
+    document.addEventListener('keydown', initAudioOnUserGesture, { once: true, passive: true });
+    function playCriticalAlert(){
+      try {
+        const ctx = _audioContext;
+        if (!ctx || ctx.state !== 'running') return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (_) {}
+    }
+    function playSoftAlert(){
+      try {
+        const ctx = _audioContext;
+        if (!ctx || ctx.state !== 'running') return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 660;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+      } catch (_) {}
+    }
+    const reverseGeocodeCache = new Map();
+    function getRegionForPoint(lng, lat){
+      if (!regionsGeoJson?.features) return null;
+      const f = regionsGeoJson.features.find(r=> pointInFeature([lng, lat], r));
+      return f?.properties?.ADM1_EN || f?.properties?.name || null;
+    }
+    async function getRegionFromReverseGeocode(lat, lng){
+      const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+      if (reverseGeocodeCache.has(key)) return reverseGeocodeCache.get(key);
+      try {
+        const r = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+          { headers: { 'Accept-Language': 'en', 'User-Agent': 'SmartForest/1.0 (forest-monitoring)' } }
+        );
+        const data = await r.json();
+        const name = data?.address?.state || data?.address?.region || data?.address?.county || data?.address?.municipality || data?.name;
+        const result = name ? String(name) : null;
+        if (result) reverseGeocodeCache.set(key, result);
+        return result;
+      } catch { return null; }
+    }
+    async function resolveRegionName(lng, lat){
+      const fromPolygon = getRegionForPoint(lng, lat);
+      if (fromPolygon) return fromPolygon;
+      const fromGeocode = await getRegionFromReverseGeocode(lat, lng);
+      return fromGeocode || 'Noma\'lum';
+    }
+    function dismissAlert(el){
+      if (!el) return;
+      el.classList.add('alert-out');
+      setTimeout(()=> el.remove(), 260);
+    }
+    function showCriticalAlert(e){
+      if (alertedIds.has(e.id)) return;
+      alertedIds.add(e.id);
+      const regionFromPolygon = getRegionForPoint(e.longitude, e.latitude);
+      const regionLabel = regionFromPolygon || '…';
+      const cam = getCameraNearPoint(e.longitude, e.latitude, 0.35);
+      const el = document.createElement('div');
+      el.className = 'critical-alert';
+      el.innerHTML = `
+        <div class="critical-alert-header">
+          <span class="critical-alert-title">⚠️ MUHIM HODISA</span>
+          <button type="button" class="critical-alert-close" aria-label="Yopish">×</button>
+        </div>
+        <div class="critical-alert-body">
+          <div><strong>Viloyat:</strong> <span class="alert-region">${escapeHtml(regionLabel)}</span></div>
+          <div><strong>Turi:</strong> ${escapeHtml(e.title || 'Hodisa')}</div>
+          ${cam ? '<button type="button" class="alert-camera-btn" aria-label="Kamerani ochish">📹 Kamerani ochish</button>' : ''}
+        </div>`;
+      el.querySelector('.critical-alert-close').onclick = ()=> dismissAlert(el);
+      if (cam) el.querySelector('.alert-camera-btn').onclick = ()=>{ openCameraPanel(cam); dismissAlert(el); };
+      document.getElementById('alert-container').appendChild(el);
+      playSoftAlert();
+      setTimeout(()=> dismissAlert(el), 7000);
+      if (!regionFromPolygon) {
+        resolveRegionName(e.longitude, e.latitude).then(name=>{
+          const span = el.querySelector('.alert-region');
+          if (span && document.body.contains(el)) span.textContent = name;
+        });
+      }
+    }
+    function showFireEventAlert(ev){
+      if (alertedIds.has('fire-'+ev.id)) return;
+      alertedIds.add('fire-'+ev.id);
+      const regionFromPolygon = getRegionForPoint(ev.longitude, ev.latitude);
+      const regionLabel = regionFromPolygon || '…';
+      const cam = getCameraNearPoint(ev.longitude, ev.latitude, 0.35);
+      const alertEl = document.createElement('div');
+      alertEl.className = 'fire-event-alert';
+      alertEl.innerHTML = `
+        <div class="fire-event-alert-header">
+          <span class="fire-event-alert-title">🔥 YANGI YONG'IN HODISASI</span>
+          <button type="button" class="fire-event-alert-close" aria-label="Yopish">×</button>
+        </div>
+        <div class="fire-event-alert-body">
+          <div><strong>Viloyat:</strong> <span class="alert-region">${escapeHtml(regionLabel)}</span></div>
+          <div><strong>Turi:</strong> ${escapeHtml(ev.title || 'Yong\'in')}</div>
+          ${cam ? '<button type="button" class="alert-camera-btn" aria-label="Kamerani ochish">📹 Kamerani ochish</button>' : ''}
+        </div>`;
+      alertEl.querySelector('.fire-event-alert-close').onclick = ()=> dismissAlert(alertEl);
+      if (cam) alertEl.querySelector('.alert-camera-btn').onclick = ()=>{ openCameraPanel(cam); dismissAlert(alertEl); };
+      document.getElementById('alert-container').appendChild(alertEl);
+      playSoftAlert();
+      setTimeout(()=> dismissAlert(alertEl), 5000);
+      if (!regionFromPolygon) {
+        resolveRegionName(ev.longitude, ev.latitude).then(name=>{
+          const span = alertEl.querySelector('.alert-region');
+          if (span && document.body.contains(alertEl)) span.textContent = name;
+        });
+      }
+    }
+    function intensity(s){ return INTENSITY[(s||'').toLowerCase()] ?? 0.5; }
+    function eventsToHeatPoints(events){ return events.map(e=>[e.latitude, e.longitude, intensity(e.severity)]); }
+
+    function seedFromCoord(lat,lng){ return Math.sin(lat*12.9898+lng*78.233)*43758.5453%1; }
+    function randomPointInUzb(){
+      const b = UZB_BOUNDS;
+      return { lat: b.getSouth() + Math.random()*(b.getNorth()-b.getSouth()), lng: b.getWest() + Math.random()*(b.getEast()-b.getWest()) };
+    }
+    const DEMO_TITLES = ['Forest fire','Smoke detected','Illegal logging','Tree disease detected','Ranger alert'];
+    function createDemoEvent(){
+      const pt = randomPointInUzb();
+      return { id: 'demo-'+Date.now(), title: DEMO_TITLES[Math.floor(Math.random()*DEMO_TITLES.length)], latitude: pt.lat, longitude: pt.lng, severity: 'critical', createdAt: new Date().toISOString() };
+    }
+    let demoIntervalId = null;
+    let demoCameraIntervalId = null;
+    function runDemoCameraHighlight(){
+      if (!demoMode || !showCamerasLayer || !cameraClusterLayer || liveCamerasData.length === 0) return;
+      const cam = liveCamerasData[Math.floor(Math.random()*liveCamerasData.length)];
+      focusCameraWithPopup(cam);
+    }
+    function runDemoStep(){
+      if (!demoMode) return;
+      const events = filteredRegionFeature ? allEvents.filter(e=> pointInFeature([e.longitude,e.latitude], filteredRegionFeature)) : allEvents;
+      const candidate = events.length ? events[Math.floor(Math.random()*Math.min(events.length, 50))] : null;
+      const e = candidate || createDemoEvent();
+      playCriticalAlert();
+      showCriticalAlert(e);
+      map.flyTo([e.latitude, e.longitude], 10 + Math.random()*2, { duration: 1.5, easeLinearity: 0.2 });
+      if (showRiskLayer && map.hasLayer(riskLayer)) { riskLastUpdate = 0; updateRiskLayer(); }
+      const badge = document.getElementById('badge');
+      if (badge) { badge.classList.add('updated'); setTimeout(()=> badge.classList.remove('updated'), 400); }
+      updateCommandBar();
+      if (document.body.classList.contains('command-mode')) updateCommandModePanels();
+    }
+    function computeRiskPoints(events){
+      const b = UZB_BOUNDS;
+      const pts = []; const cols=30; const rows=22;
+      const critical = events.filter(e=>(e.severity||'').toLowerCase()==='critical');
+      const high = events.filter(e=>(e.severity||'').toLowerCase()==='high');
+      const medium = events.filter(e=>(e.severity||'').toLowerCase()==='medium');
+      let maxRaw = 0;
+      const rawPts = [];
+      for (let i=0;i<rows;i++){
+        for (let j=0;j<cols;j++){
+          const lat = b.getSouth() + (b.getNorth()-b.getSouth())*(i+0.5)/rows;
+          const lng = b.getWest() + (b.getEast()-b.getWest())*(j+0.5)/cols;
+          if (!regionsGeoJson?.features?.some(f=>pointInFeature([lng,lat],f))) continue;
+          const nearby = events.filter(e=> Math.hypot(e.latitude-lat,(e.longitude-lng)*0.8) < 1.5);
+          const nCritical = nearby.filter(e=>(e.severity||'').toLowerCase()==='critical').length;
+          const nHigh = nearby.filter(e=>(e.severity||'').toLowerCase()==='high').length;
+          const nMedium = nearby.filter(e=>(e.severity||'').toLowerCase()==='medium').length;
+          let raw = nCritical*5 + nHigh*3 + nMedium*1.5 + seedFromCoord(lat,lng)*2;
+          if (raw > maxRaw) maxRaw = raw;
+          rawPts.push({lat,lng,raw});
+        }
+      }
+      const denom = Math.max(1, maxRaw);
+      rawPts.forEach(p=> pts.push([p.lat, p.lng, Math.min(1, p.raw/denom)]));
+      return {pts, rawPts};
+    }
+    function getHighestRiskZone(threshold){
+      const events = typeof allEvents !== 'undefined' ? allEvents : [];
+      const {rawPts} = computeRiskPoints(events);
+      if (!rawPts.length) return null;
+      const maxRaw = Math.max(...rawPts.map(p=>p.raw));
+      const denom = Math.max(1, maxRaw);
+      const high = rawPts.filter(p=> p.raw/denom >= (threshold||0.7)).sort((a,b)=>b.raw-a.raw);
+      return high[0] ? {lat:high[0].lat, lng:high[0].lng, score:high[0].raw/denom} : null;
+    }
+    function updateRiskLayer(){
+      const now = Date.now();
+      if (now - riskLastUpdate < riskUpdateInterval) return;
+      riskLastUpdate = now;
+      const events = filteredRegionFeature ? allEvents.filter(e=> pointInFeature([e.longitude,e.latitude], filteredRegionFeature)) : allEvents;
+      const {pts} = computeRiskPoints(events);
+      let finalPts = pts;
+      if (demoMode) {
+        const spikes = [];
+        for (let i = 0; i < 3; i++) {
+          const pt = randomPointInUzb();
+          const intensity = 0.6 + Math.random()*0.4;
+          spikes.push([pt.lat, pt.lng, intensity]);
+        }
+        finalPts = [...pts, ...spikes];
+      }
+      riskLayer.setLatLngs(finalPts);
+    }
+    function formatTime(d){ return d ? new Date(d).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}) : '—'; }
+
+    function createCameraMarker(cam){
+      if (!regionsGeoJson?.features?.some(f=> pointInFeature([cam.longitude, cam.latitude], f))) return null;
+      const dot = document.createElement('div');
+      dot.className = 'camera-marker';
+      dot.innerHTML = CAM_SVG;
+      const icon = L.divIcon({ html: dot, className: '', iconSize: [22, 22], iconAnchor: [11, 11] });
+      const m = L.marker([cam.latitude, cam.longitude], { icon });
+      m._camera = cam;
+      m.on('click', ()=> openCameraPanel(cam));
+      cameraLayer.addLayer(m);
+      return m;
+    }
+    function stopCameraPanelFeed(panel){
+      if (!panel) return;
+      if (panel.tsInterval != null) { clearInterval(panel.tsInterval); panel.tsInterval = null; }
+      if (panel.video) { panel.video.pause(); panel.video.src = ''; panel.video.load(); }
+    }
+    function openCameraPanel(cam){
+      const container = document.getElementById('camera-panel-container');
+      let backdrop, el;
+      if (cameraPanel) {
+        stopCameraPanelFeed(cameraPanel);
+        backdrop = cameraPanel.backdrop;
+        el = cameraPanel.el;
+        el.classList.remove('Closing');
+      } else {
+        backdrop = document.createElement('div');
+        backdrop.className = 'camera-modal-backdrop';
+        el = document.createElement('div');
+        el.className = 'camera-panel';
+        el.innerHTML = `
+          <div class="camera-panel-header">
+            <span class="camera-panel-title"></span>
+            <button type="button" class="camera-panel-close" aria-label="Yopish">×</button>
+          </div>
+          <div class="camera-panel-video-wrap">
+            <div class="camera-panel-loader">
+              <div class="camera-panel-spinner"></div>
+              <span>Oqim yuklanmoqda...</span>
+            </div>
+            <div class="camera-panel-offline hidden">Kamera offlayn</div>
+            <div class="camera-panel-live hidden"><span class="camera-panel-live-dot"></span>LIVE</div>
+            <div class="camera-panel-timestamp">—</div>
+            <div class="camera-panel-region"></div>
+            <video muted playsinline loop preload="none"></video>
+          </div>
+          <div class="camera-panel-footer">KUZATUV OQIMI · OVOZ YO'Q</div>
+        `;
+        container.appendChild(backdrop);
+        container.appendChild(el);
+        backdrop.onclick = ()=> closeCameraPanel();
+        el.onclick = (e)=> e.stopPropagation();
+        el.querySelector('.camera-panel-close').onclick = (e)=>{ e.stopPropagation(); closeCameraPanel(); };
+      }
+
+      const camName = cam.name || cam.label || 'Camera';
+      const camStatus = (cam.status || 'unknown').toLowerCase();
+      const streamUrl = cam.streamUrl || null;
+      const isOffline = !streamUrl || camStatus === 'offline';
+      const regionName = getRegionForPoint(cam.longitude, cam.latitude) || cam.label || cam.name || '';
+
+      el.querySelector('.camera-panel-title').textContent = `${camName} — ${camStatus === 'online' ? '🟢 Onlayn' : '🔴 Offlayn'}`;
+      el.querySelector('.camera-panel-region').textContent = regionName;
+
+      const video = el.querySelector('video');
+      const loader = el.querySelector('.camera-panel-loader');
+      const offlineEl = el.querySelector('.camera-panel-offline');
+      const liveEl = el.querySelector('.camera-panel-live');
+      const tsEl = el.querySelector('.camera-panel-timestamp');
+      const regionEl = el.querySelector('.camera-panel-region');
+
+      loader.classList.remove('hidden');
+      offlineEl.classList.add('hidden');
+      liveEl.classList.add('hidden');
+      tsEl.classList.remove('live-active');
+      regionEl.classList.remove('live-active');
+      video.style.display = '';
+
+      let tsInterval = null;
+      if (isOffline) {
+        loader.classList.add('hidden');
+        offlineEl.classList.remove('hidden');
+        video.style.display = 'none';
+      } else {
+        video.onloadeddata = ()=>{
+          loader.classList.add('hidden');
+          liveEl.classList.remove('hidden');
+          tsEl.classList.add('live-active');
+          regionEl.classList.add('live-active');
+          video.play().catch(()=>{});
+        };
+        video.onerror = ()=> {
+          loader.classList.add('hidden');
+          offlineEl.classList.remove('hidden');
+          offlineEl.textContent = 'Kamera offlayn';
+          video.style.display = 'none';
+        };
+        video.src = streamUrl;
+        video.load();
+        function updateTs(){ tsEl.textContent = new Date().toLocaleTimeString(undefined,{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+        updateTs();
+        tsInterval = setInterval(updateTs, 1000);
+      }
+
+      const panel = { el, cam, video, tsInterval, backdrop };
+      cameraPanel = panel;
+      container.classList.add('visible');
+      setCameraMarkerActive(cam, true);
+      return panel;
+    }
+    function setCameraMarkerActive(cam, active){
+      const addOrRemove = active ? 'add' : 'remove';
+      const markers = cameraClusterLayer?.getAllChildMarkers?.() ?? [];
+      const m = markers.find(l=> l._camera?.id === cam?.id);
+      if (m) {
+        const el = m.getElement?.();
+        const inner = el?.querySelector?.('.live-cam-marker');
+        if (inner) inner.classList[addOrRemove]('active');
+      }
+      cameraLayer?.eachLayer?.(l=> {
+        if (l._camera?.id === cam?.id) {
+          const el = l.getElement?.();
+          const inner = el?.querySelector?.('.camera-marker');
+          if (inner) inner.classList[addOrRemove]('active');
+        }
+      });
+    }
+    function closeCameraPanel(panel){
+      const toClose = panel || cameraPanel;
+      if (!toClose) return;
+      setCameraMarkerActive(toClose.cam, false);
+      stopCameraPanelFeed(toClose);
+      toClose.el.classList.add('Closing');
+      setTimeout(()=> {
+        toClose.el.classList.remove('Closing');
+        document.getElementById('camera-panel-container').classList.remove('visible');
+      }, 220);
+    }
+    function makePanelDraggable(panelEl, handle){
+      let dx = 0, dy = 0, startX = 0, startY = 0;
+      handle.addEventListener('mousedown', function(e){
+        if (e.button !== 0) return;
+        e.preventDefault();
+        const rect = panelEl.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+        const onMove = (ev)=>{
+          dx = ev.clientX - startX;
+          dy = ev.clientY - startY;
+          panelEl.style.left = dx + 'px';
+          panelEl.style.top = dy + 'px';
+          panelEl.style.right = 'auto';
+          panelEl.style.bottom = 'auto';
+        };
+        const onUp = ()=>{ document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+    function getCameraNearPoint(lng, lat, maxDistDeg){
+      maxDistDeg = maxDistDeg ?? 0.2;
+      let best = null;
+      let bestD = Infinity;
+      CAMERAS.forEach(c=>{
+        const d = Math.hypot(c.latitude - lat, (c.longitude - lng) * 0.8);
+        if (d < maxDistDeg && d < bestD) { bestD = d; best = c; }
+      });
+      (liveCamerasData || []).forEach(c=>{
+        const d = Math.hypot(c.latitude - lat, (c.longitude - lng) * 0.8);
+        if (d < maxDistDeg && d < bestD) { bestD = d; best = c; }
+      });
+      return best;
+    }
+    function openCameraForCriticalEvent(lng, lat){
+      const cam = getCameraNearPoint(lng, lat, 0.25);
+      if (!cam) return null;
+      const p = openCameraPanel(cam);
+      if (p) p._tourAuto = true;
+      return cam;
+    }
+
+    function createMarker(e, isNew, isLatest){
+      const dot = document.createElement('div');
+      const isCritical = (e.severity||'').toLowerCase() === 'critical';
+      dot.className = 'marker-dot' + (isCritical ? ' critical' : '') + (isLatest ? ' latest' : '');
+      dot.style.backgroundColor = isLatest ? undefined : color(e.severity);
+      dot.title = isLatest ? 'SO\'NGGI YONG\'IN HODISASI' : '';
+      const size = isLatest ? 26 : 14;
+      const anchor = size / 2;
+      const icon = L.divIcon({ html: dot, className: '', iconSize: [size,size], iconAnchor: [anchor,anchor] });
+      const m = L.marker([e.latitude, e.longitude], { icon });
+      m._event = e;
+      markerLayer.addLayer(m);
+      const sev = (e.severity||'').toLowerCase();
+      const sevUz = {critical:'Muhim',high:'Yuqori',medium:'O\'rta',low:'Past'}[sev] || escapeHtml(e.severity);
+      const pop = document.createElement('div');
+      const lat = e.latitude != null ? Number(e.latitude).toFixed(5) : '—';
+      const lng = e.longitude != null ? Number(e.longitude).toFixed(5) : '—';
+      pop.innerHTML = `<div class="popup-title">${escapeHtml(e.title)}</div>${isLatest ? '<div class="popup-latest-badge">SO\'NGGI YONG\'IN HODISASI</div>' : ''}<span class="popup-severity ${sev}">${sevUz}</span><div class="popup-coords">Koordinatalar: ${escapeHtml(lat)}, ${escapeHtml(lng)}</div><div class="popup-time">${escapeHtml(formatTime(e.createdAt))}</div>`;
+      m.bindPopup(pop);
+      return m;
+    }
+
+    function pushEvent(e){
+      if (renderedIds.has(e.id)) return;
+      allEvents.unshift(e);
+      const displayEvents = filteredRegionFeature ? allEvents.filter(x=> pointInFeature([x.longitude, x.latitude], filteredRegionFeature)) : allEvents;
+      syncMarkersToEvents(displayEvents);
+      const markersVisible = map.hasLayer(markerLayer);
+      const isCritical = (e.severity||'').toLowerCase() === 'critical';
+      const isFire = (e.title||'').toLowerCase().includes('fire');
+      if (markersVisible) {
+        map.flyTo([e.latitude, e.longitude], 11, { duration: 1, easeLinearity: 0.2 });
+        const markers = markerLayer.getAllChildMarkers?.() ?? [];
+        const m = markers.find(l=> l._event?.id === e.id);
+        if (m) {
+          const iconEl = m.getElement?.();
+          const dot = iconEl?.querySelector?.('.marker-dot');
+          if (dot) {
+            dot.classList.add('new-event-pulse');
+            setTimeout(()=> dot.classList.remove('new-event-pulse'), 4200);
+          }
+          map.once('moveend', ()=> { if (m && map.hasLayer(markerLayer)) m.openPopup(); });
+        }
+        if (isCritical) highlightRegionForIncident(e.longitude, e.latitude);
+      }
+      if (isCritical) {
+        playCriticalAlert();
+        showCriticalAlert(e);
+      } else if (isFire) {
+        showFireEventAlert(e);
+      }
+      if (map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(displayEvents));
+      { const ac=document.body.classList.contains('dark')?'#6b9a75':'#166534'; document.getElementById('badge').innerHTML = `Hodisalar: <b>${displayEvents.length}</b>${filteredRegionFeature ? ` <span style="font-size:11px;color:${ac}">(filtrlangan)</span>` : ` <span style="font-size:11px;color:${ac}">● Canli</span>`}`; }
+      document.getElementById('badge').classList.add('updated');
+      setTimeout(()=> document.getElementById('badge').classList.remove('updated'), 400);
+      lastEventTime = e.createdAt ? new Date(e.createdAt).getTime() : Date.now();
+      updateCommandBar();
+      if (document.body.classList.contains('command-mode')) updateCommandModePanels();
+      if (showRiskLayer) updateRiskLayer();
+      if (filteredRegionFeature) updateStatsPanel(displayEvents);
+    }
+
+    function loadInitial(){
+      fetchJsonWithRetry('/api/v1/events').then(events=>{
+        hideReconnecting();
+        eventsLoaded = true;
+        tryHideMapSkeleton();
+        allEvents = events;
+        const badge = document.getElementById('badge');
+        badge.classList.remove('loading');
+        if (filteredRegionFeature) {
+          applyRegionFilter();
+        } else {
+          syncMarkersToEvents(events);
+          if (map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(events));
+          { const ac=document.body.classList.contains('dark')?'#6b9a75':'#166534'; badge.innerHTML = `Hodisalar: <b>${events.length}</b>${events.length > MARKER_LIMIT ? ` <span style="font-size:10px;color:${ac}">(${MARKER_LIMIT} ko'rsatilmoqda)</span>` : ''} <span style="font-size:11px;color:${ac}">● Canli</span>`; }
+        }
+        lastEventTime = events[0]?.createdAt ? new Date(events[0].createdAt).getTime() : null;
+        updateCommandBar();
+        if (document.body.classList.contains('command-mode')) updateCommandModePanels();
+        if (showRiskLayer) updateRiskLayer();
+        isFirstLoad = false;
+      }).catch(()=>{ hideReconnecting(); eventsLoaded = true; tryHideMapSkeleton(); const b=document.getElementById('badge'); b.classList.remove('loading'); b.innerHTML='Hodisalar: <b style="color:#c47a75">Xatolik</b>'; });
+    }
+
+    function shuffle(arr){
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function buildTourStops(){
+      const events = typeof allEvents !== 'undefined' ? allEvents : [];
+      const critical = events.filter(e=>(e.severity||'').toLowerCase()==='critical').map(e=>({...e,priority:4}));
+      const high = events.filter(e=>(e.severity||'').toLowerCase()==='high').map(e=>({...e,priority:3}));
+      const medium = events.filter(e=>(e.severity||'').toLowerCase()==='medium').map(e=>({...e,priority:2}));
+      const low = events.filter(e=>(e.severity||'').toLowerCase()==='low').map(e=>({...e,priority:1}));
+      let stops = [...shuffle(critical),...shuffle(high),...shuffle(medium)];
+      if (stops.length === 0) stops = shuffle(low);
+      const seen = new Set();
+      return stops.filter(s=>{
+        const region = getRegionForPoint(s.longitude, s.latitude) || s.latitude.toFixed(3)+','+s.longitude.toFixed(3);
+        const k = `${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        s._regionKey = region;
+        s._coordKey = k;
+        return true;
+      });
+    }
+    function pickNextStop(stops){
+      if (stops.length === 0) return null;
+      const avoid = lastTourStopKey;
+      const candidates = avoid ? stops.filter(s=> (s._regionKey || s.latitude.toFixed(3)+','+s.longitude.toFixed(3)) !== avoid) : stops;
+      const pool = candidates.length ? candidates : stops;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+    function showAutoTourAlert(regionName, eventType, lng, lat){
+      const cam = (lng != null && lat != null) ? getCameraNearPoint(lng, lat, 0.35) : null;
+      const el = document.createElement('div');
+      el.className = 'critical-alert auto-tour-alert';
+      el.innerHTML = `
+        <div class="critical-alert-header">
+          <span class="critical-alert-title">⚠️ MUHIM OGOHLANTIRISH</span>
+        </div>
+        <div class="critical-alert-body">
+          <div><strong>Viloyat:</strong> ${escapeHtml(regionName)}</div>
+          <div><strong>Hodisa:</strong> ${escapeHtml(eventType)}</div>
+          ${cam ? '<button type="button" class="alert-camera-btn" aria-label="Kamerani ochish">📹 Kamerani ochish</button>' : ''}
+        </div>`;
+      if (cam) el.querySelector('.alert-camera-btn').onclick = ()=> openCameraPanel(cam);
+      const container = document.getElementById('auto-tour-alert-container');
+      if (container) {
+        container.innerHTML = '';
+        container.appendChild(el);
+      }
+    }
+    function clearAutoTourAlert(){
+      const container = document.getElementById('auto-tour-alert-container');
+      if (container) container.innerHTML = '';
+    }
+    function stopAutoTour(){
+      tourActive = false;
+      if (tourTimeout) clearTimeout(tourTimeout);
+      if (tourStayTimeout) clearTimeout(tourStayTimeout);
+      tourTimeout = tourStayTimeout = null;
+      clearAutoTourAlert();
+      if (cameraPanel && cameraPanel._tourAuto) closeCameraPanel(cameraPanel);
+      if (incidentHighlightTimeout) clearTimeout(incidentHighlightTimeout);
+      incidentHighlightTimeout = null;
+      if (incidentGlowLayer) { map.removeLayer(incidentGlowLayer); incidentGlowLayer = null; }
+      if (regionsLayer) regionsLayer.eachLayer(l=> l.setStyle(currentRegionStyle));
+    }
+    function runAutoTourStep(){
+      if (!autoCommandEnabled || !document.body.classList.contains('command-mode')) return;
+      tourStops = buildTourStops();
+      if (tourStops.length === 0 && regionsGeoJson?.features?.length) {
+        const centroids = shuffle(regionsGeoJson.features).slice(0, 8).map(f=>{
+          const c = turf.centroid(f);
+          const region = f.properties?.ADM1_EN || f.properties?.name || 'Region';
+          return {latitude:c.geometry.coordinates[1],longitude:c.geometry.coordinates[0],title:region,priority:0,_regionKey:region};
+        });
+        tourStops = centroids;
+      }
+      if (tourStops.length === 0) return;
+      const stop = pickNextStop(tourStops);
+      if (!stop) return;
+      lastTourStopKey = stop._regionKey || stop.latitude.toFixed(3)+','+stop.longitude.toFixed(3);
+      tourActive = true;
+      const duration = 4 + Math.random() * 3;
+      map.flyTo([stop.latitude, stop.longitude], 11, { duration, easeLinearity: 0.2 });
+      map.once('moveend', ()=>{
+        if (!tourActive) return;
+        highlightRegionForIncident(stop.longitude, stop.latitude);
+        const regionName = getRegionForPoint(stop.longitude, stop.latitude) || stop.title || 'Noma\'lum';
+        if (stop.priority >= 4) {
+          showAutoTourAlert(regionName, stop.title || 'Hodisa', stop.longitude, stop.latitude);
+        } else clearAutoTourAlert();
+        tourStayTimeout = setTimeout(()=>{
+          if (!tourActive) return;
+          clearAutoTourAlert();
+          const highRisk = showRiskLayer ? getHighestRiskZone(0.65) : null;
+          const curLat = stop.latitude, curLng = stop.longitude;
+          const isDifferent = highRisk && (Math.abs(highRisk.lat-curLat)>0.1 || Math.abs(highRisk.lng-curLng)>0.1);
+          if (highRisk && isDifferent) {
+            map.flyTo([highRisk.lat, highRisk.lng], 10, { duration: 2.5, easeLinearity: 0.2 });
+            map.once('moveend', ()=>{
+              if (!tourActive) return;
+              tourStayTimeout = setTimeout(()=>{
+                if (!tourActive) return;
+                tourTimeout = setTimeout(runAutoTourStep, 600 + Math.random() * 400);
+              }, 2000);
+            });
+          } else {
+            tourTimeout = setTimeout(runAutoTourStep, 600 + Math.random() * 400);
+          }
+        }, 5000);
+      });
+    }
+    function onUserInteraction(){
+      lastInteractionTime = Date.now();
+      if (tourActive) stopAutoTour();
+    }
+
+    function updateCommandModePanels(){
+      const events = typeof allEvents !== 'undefined' ? allEvents : [];
+      const critical = events.filter(e=>(e.severity||'').toLowerCase()==='critical');
+      const sensorKeys = new Set();
+      events.forEach(e=> sensorKeys.add(`${e.latitude.toFixed(3)},${e.longitude.toFixed(3)}`));
+      let regionsOnline = 0;
+      if (regionsGeoJson?.features?.length) {
+        regionsOnline = regionsGeoJson.features.filter(f=> events.some(e=> pointInFeature([e.longitude, e.latitude], f))).length;
+      }
+      const recent = events.slice(0, 12);
+      const listEl = document.getElementById('cmd-incidents-list');
+      const critEl = document.getElementById('cmd-critical-list');
+      if (listEl) {
+        listEl.innerHTML = recent.length ? recent.map(e=>{
+          const region = getRegionForPoint(e.longitude, e.latitude) || '—';
+          const c = (e.severity||'').toLowerCase()==='critical' ? ' critical' : '';
+          return `<div class="cmd-incident${c}">${escapeHtml(e.title||'Ogohlantirish')}<div class="cmd-incident-region">${escapeHtml(region)} · ${escapeHtml(formatTime(e.createdAt))}</div></div>`;
+        }).join('') : '<div class="cmd-incident" style="opacity:.5">Hodisa yo\'q</div>';
+      }
+      if (critEl) {
+        critEl.innerHTML = critical.length ? critical.slice(0, 8).map(e=>{
+          const region = getRegionForPoint(e.longitude, e.latitude) || '—';
+          return `<div class="cmd-incident critical">${escapeHtml(e.title||'Muhim')}<div class="cmd-incident-region">${escapeHtml(region)}</div></div>`;
+        }).join('') : '<div class="cmd-incident" style="opacity:.5;border-left-color:rgba(255,255,255,.2)">Yo\'q</div>';
+      }
+      const rSensors = document.getElementById('cmd-r-sensors');
+      const rRegions = document.getElementById('cmd-r-regions');
+      const rRisk = document.getElementById('cmd-r-risk');
+      if (rSensors) rSensors.textContent = sensorKeys.size;
+      if (rRegions) rRegions.textContent = `${regionsOnline}/${regionsGeoJson?.features?.length||0}`;
+      if (rRisk) {
+        const riskTxt = critical.length ? (critical.length>=3 ? 'YUQORI' : critical.length>=1 ? 'OSHIQ' : 'PAST') : 'PAST';
+        rRisk.textContent = riskTxt;
+        rRisk.classList.toggle('cmd-high', riskTxt === 'YUQORI');
+      }
+    }
+    function setMapMode(mode){
+      requestAnimationFrame(()=>{
+        if (mode === 'national') {
+          document.body.classList.remove('dark','intel','command-mode');
+          stopAutoTour();
+          if (document.fullscreenElement) document.exitFullscreen?.();
+        } else if (mode === 'command') {
+          document.body.classList.add('dark','command-mode');
+          document.body.classList.remove('intel');
+          document.documentElement.requestFullscreen?.();
+          updateCommandModePanels();
+        } else {
+          document.body.classList.add('dark','intel');
+          document.body.classList.remove('command-mode');
+          stopAutoTour();
+          if (document.fullscreenElement) document.exitFullscreen?.();
+        }
+        safeStorage.setItem('smart-forest-map-mode', mode);
+        applyMapTheme(mode);
+        document.querySelectorAll('.map-mode-switcher .mode-btn').forEach(btn=>{
+          btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+        if (window.__applyBasemapFromPanel) window.__applyBasemapFromPanel();
+      });
+    }
+    document.getElementById('map-mode-switcher').addEventListener('click', e=>{
+      const btn = e.target.closest('.mode-btn');
+      if (btn && btn.dataset.mode) setMapMode(btn.dataset.mode);
+    });
+    document.addEventListener('fullscreenchange', ()=> {
+      if (!document.fullscreenElement && document.body.classList.contains('command-mode')) {
+        setMapMode('national');
+      }
+    });
+
+    document.getElementById('layer-toggle').onclick = ()=>{
+      showHeatmap = !showHeatmap;
+      if (showHeatmap) {
+        map.removeLayer(markerLayer);
+        map.addLayer(heatLayer);
+        document.getElementById('layer-toggle').textContent = 'Belgilar';
+      } else {
+        map.removeLayer(heatLayer);
+        map.addLayer(markerLayer);
+        if (cameraClusterLayer && map.hasLayer(cameraClusterLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
+        document.getElementById('layer-toggle').textContent = 'Issiqlik xaritasi';
+      }
+    };
+
+    const camerasToggle = document.getElementById('cameras-toggle');
+    if (camerasToggle) {
+      camerasToggle.classList.toggle('active', showCamerasLayer);
+      camerasToggle.onclick = ()=>{
+        showCamerasLayer = !showCamerasLayer;
+        safeStorage.setItem('smart-forest-cameras', showCamerasLayer);
+        camerasToggle.classList.toggle('active', showCamerasLayer);
+        const mapEl = document.getElementById('map');
+        if (showCamerasLayer) {
+          mapEl?.classList.add('cameras-active');
+          if (liveCamerasData.length === 0) liveCamerasData = generateLiveCameras();
+          if (cameraClusterLayer) map.removeLayer(cameraClusterLayer);
+          cameraClusterLayer = buildCameraClusterLayer();
+          map.addLayer(cameraClusterLayer);
+          if (map.hasLayer(markerLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
+        } else {
+          mapEl?.classList.remove('cameras-active');
+          if (cameraClusterLayer) { map.removeLayer(cameraClusterLayer); cameraClusterLayer = null; }
+        }
+      };
+    }
+
+    const riskToggle = document.getElementById('risk-toggle');
+    if (riskToggle) {
+      riskToggle.textContent = showRiskLayer ? '🟢 AI xavf qatlami' : 'AI xavf qatlami';
+      riskToggle.classList.toggle('active', showRiskLayer);
+      riskToggle.onclick = ()=>{
+        showRiskLayer = !showRiskLayer;
+        safeStorage.setItem('smart-forest-ai-risk', showRiskLayer);
+        riskToggle.textContent = showRiskLayer ? '🟢 AI xavf qatlami' : 'AI xavf qatlami';
+        const legend = document.getElementById('risk-legend');
+        const mapEl = document.getElementById('map');
+        riskToggle.classList.toggle('active', showRiskLayer);
+        legend.classList.toggle('visible', showRiskLayer);
+        mapEl.classList.toggle('risk-breathing', showRiskLayer);
+        if (showRiskLayer) {
+          riskLastUpdate = 0;
+          updateRiskLayer();
+          map.addLayer(riskLayer);
+        } else {
+          map.removeLayer(riskLayer);
+        }
+      };
+    }
+
+    (function initLayerPanel(){
+      const STORAGE_KEY = 'smart-forest-layer-panel';
+      const defaultState = {
+        eventMarkers: true,
+        aiRisk: showRiskLayer,
+        cameras: showCamerasLayer,
+        boundary: true,
+        forestLandsVisible: false,
+        forestLandsExpanded: false,
+        leaseAreas: false,
+        availableLands: false,
+        basemap: 'topographic',
+        collapsed: false
+      };
+      function loadState(){
+        try {
+          const s = safeStorage.getItem(STORAGE_KEY);
+          if (s) {
+            const parsed = JSON.parse(s);
+            const st = { ...defaultState, ...parsed };
+            st.forestLandsVisible = !!parsed.forestLandsVisible;
+            if (parsed.forestLandsExpanded !== undefined) st.forestLandsExpanded = !!parsed.forestLandsExpanded;
+            delete st.forestLands;
+            return st;
+          }
+        } catch (_) {}
+        const st = { ...defaultState };
+        const savedMode = safeStorage.getItem('smart-forest-map-mode');
+        if (savedMode === 'intel') st.basemap = 'satellite';
+        return st;
+      }
+      function saveState(state){
+        try {
+          safeStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (_) {}
+      }
+
+      const panel = document.getElementById('layer-panel');
+      const state = loadState();
+
+      function applyEventMarkers(on){
+        showHeatmap = false;
+        if (on) {
+          if (map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+          if (!map.hasLayer(markerLayer)) map.addLayer(markerLayer);
+          if (cameraClusterLayer && map.hasLayer(cameraClusterLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
+          const displayEvents = filteredRegionFeature ? allEvents.filter(x=> pointInFeature([x.longitude, x.latitude], filteredRegionFeature)) : allEvents;
+          syncMarkersToEvents(displayEvents);
+        } else {
+          map.removeLayer(markerLayer);
+        }
+      }
+      function applyAiRisk(on){
+        showRiskLayer = on;
+        safeStorage.setItem('smart-forest-ai-risk', on);
+        const legend = document.getElementById('risk-legend');
+        const mapEl = document.getElementById('map');
+        legend.classList.toggle('visible', on);
+        mapEl.classList.toggle('risk-breathing', on);
+        if (on) {
+          riskLastUpdate = 0;
+          updateRiskLayer();
+          map.addLayer(riskLayer);
+        } else {
+          map.removeLayer(riskLayer);
+        }
+        if (riskToggle) { riskToggle.classList.toggle('active', on); riskToggle.textContent = on ? '🟢 AI xavf qatlami' : 'AI xavf qatlami'; }
+      }
+      function applyCameras(on){
+        showCamerasLayer = on;
+        safeStorage.setItem('smart-forest-cameras', on);
+        const mapEl = document.getElementById('map');
+        if (on) {
+          mapEl.classList.add('cameras-active');
+          if (liveCamerasData.length === 0) liveCamerasData = generateLiveCameras();
+          if (cameraClusterLayer) map.removeLayer(cameraClusterLayer);
+          cameraClusterLayer = buildCameraClusterLayer();
+          map.addLayer(cameraClusterLayer);
+          if (map.hasLayer(markerLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
+        } else {
+          mapEl.classList.remove('cameras-active');
+          if (cameraClusterLayer) { map.removeLayer(cameraClusterLayer); cameraClusterLayer = null; }
+        }
+        if (camerasToggle) camerasToggle.classList.toggle('active', on);
+      }
+      function applyBoundary(on){
+        const layers = [maskLayer, focusHighlightLayer, regionsLayer].filter(Boolean);
+        if (on) {
+          layers.forEach(l => { if (l && !map.hasLayer(l)) map.addLayer(l); });
+        } else {
+          layers.forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); });
+        }
+      }
+      function applyForestContour(visible){
+        if (!forestContourLayer) return;
+        if (visible) { if (!map.hasLayer(forestContourLayer)) map.addLayer(forestContourLayer); forestContourLayer.bringToBack(); }
+        else { if (map.hasLayer(forestContourLayer)) map.removeLayer(forestContourLayer); }
+      }
+      function applyLeaseAreas(on){
+        if (!leaseAreasLayer) return;
+        const visible = state.forestLandsVisible && on;
+        if (visible) { 
+          if (!map.hasLayer(leaseAreasLayer)) map.addLayer(leaseAreasLayer); 
+          leaseAreasLayer.bringToFront(); 
+          leaseAreasLayer.eachLayer(l=> { if (l.bringToFront) l.bringToFront(); });
+        }
+        else { if (map.hasLayer(leaseAreasLayer)) map.removeLayer(leaseAreasLayer); if (selectedLandLayer && selectedLandLayer._landType==='lease') applyLandSelection(null); }
+      }
+      function applyAvailableLands(on){
+        if (!availableLandsLayer) return;
+        const visible = state.forestLandsVisible && on;
+        if (visible) { 
+          if (!map.hasLayer(availableLandsLayer)) map.addLayer(availableLandsLayer); 
+          availableLandsLayer.bringToFront(); 
+          availableLandsLayer.eachLayer(l=> { if (l.bringToFront) l.bringToFront(); });
+        }
+        else { if (map.hasLayer(availableLandsLayer)) map.removeLayer(availableLandsLayer); if (selectedLandLayer && selectedLandLayer._landType==='available') applyLandSelection(null); }
+      }
+      function applyForestLayers(){
+        applyForestContour(state.forestLandsVisible);
+        applyLeaseAreas(state.leaseAreas);
+        applyAvailableLands(state.availableLands);
+      }
+      window.__applyForestLandsFromPanel = ()=> applyForestLayers();
+      function applyBasemap(basemap){
+        const tilePane = map.getContainer().querySelector('.leaflet-tile-pane');
+        if (tilePane) { tilePane.style.transition = 'opacity .2s ease'; tilePane.style.opacity = '0.85'; }
+        [lightTiles, darkTiles, satelliteTiles, hybridLabelsTiles, topographicTiles].forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+        if (basemap === 'satellite') {
+          map.addLayer(satelliteTiles);
+        } else if (basemap === 'hybrid') {
+          map.addLayer(satelliteTiles);
+          map.addLayer(hybridLabelsTiles);
+        } else {
+          map.addLayer(topographicTiles);
+        }
+        document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
+        const btn = document.querySelector(`.layer-panel-item[data-basemap="${basemap}"] .layer-panel-toggle`);
+        if (btn) btn.classList.add('on');
+        if (tilePane) { requestAnimationFrame(() => { tilePane.style.opacity = '1'; }); }
+      }
+      window.__applyBasemapFromPanel = () => applyBasemap(state.basemap);
+      window.__applyBoundaryFromPanel = () => applyBoundary(state.boundary);
+
+      function setToggle(id, on){
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('on', !!on);
+      }
+      function updateAllToggles(){
+        setToggle('toggle-eventMarkers', state.eventMarkers);
+        setToggle('toggle-aiRisk', state.aiRisk);
+        setToggle('toggle-cameras', state.cameras);
+        setToggle('toggle-boundary', state.boundary);
+        setToggle('toggle-forestLands', state.forestLandsVisible);
+        setToggle('toggle-leaseAreas', state.leaseAreas);
+        setToggle('toggle-availableLands', state.availableLands);
+        const groupEl = document.querySelector('.layer-panel-group[data-group="forestLands"]');
+        if (groupEl) groupEl.classList.toggle('expanded', !!state.forestLandsExpanded);
+        document.querySelectorAll('.layer-panel-item.basemap .layer-panel-toggle').forEach(el => el.classList.remove('on'));
+        const basemapBtn = document.querySelector(`.layer-panel-item[data-basemap="${state.basemap}"] .layer-panel-toggle`);
+        if (basemapBtn) basemapBtn.classList.add('on');
+      }
+
+      state.aiRisk = showRiskLayer;
+      state.cameras = showCamerasLayer;
+      state.eventMarkers = !showHeatmap;
+      updateAllToggles();
+      applyEventMarkers(state.eventMarkers);
+      applyAiRisk(state.aiRisk);
+      applyCameras(state.cameras);
+      applyBoundary(state.boundary);
+      applyForestLayers();
+      applyBasemap(state.basemap);
+
+      panel.classList.toggle('collapsed', state.collapsed);
+      document.querySelector('.layer-panel-group[data-group="forestLands"]')?.classList.toggle('expanded', !!state.forestLandsExpanded);
+
+      function toggleForestLandsExpand(){
+        state.forestLandsExpanded = !state.forestLandsExpanded;
+        saveState(state);
+        document.querySelector('.layer-panel-group[data-group="forestLands"]')?.classList.toggle('expanded', state.forestLandsExpanded);
+      }
+      function setForestLandsVisible(on){
+        state.forestLandsVisible = !!on;
+        if (!on) { state.leaseAreas = false; state.availableLands = false; }
+        setToggle('toggle-forestLands', state.forestLandsVisible);
+        setToggle('toggle-leaseAreas', state.leaseAreas);
+        setToggle('toggle-availableLands', state.availableLands);
+        saveState(state);
+        applyForestLayers();
+      }
+      document.getElementById('forestLands-expand')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleForestLandsExpand();
+      });
+      document.querySelector('.layer-panel-group[data-group="forestLands"] .layer-panel-group-header')?.addEventListener('click', (e) => {
+        if (e.target.closest('.layer-panel-group-expand') || e.target.closest('.layer-panel-toggle')) return;
+        toggleForestLandsExpand();
+      });
+      document.getElementById('toggle-forestLands')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setForestLandsVisible(!state.forestLandsVisible);
+      });
+
+      document.querySelectorAll('.layer-panel-item[data-layer]').forEach(item => {
+        const layerId = item.dataset.layer;
+        const toggleEl = item.querySelector('.layer-panel-toggle');
+        if (!toggleEl) return;
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.layer-panel-toggle')) return;
+          const on = !toggleEl.classList.contains('on');
+          state[layerId] = on;
+          toggleEl.classList.toggle('on', on);
+          saveState(state);
+          if (layerId === 'eventMarkers') { state.eventMarkers = on; applyEventMarkers(on); }
+          else if (layerId === 'aiRisk') { state.aiRisk = on; applyAiRisk(on); }
+          else if (layerId === 'cameras') { state.cameras = on; applyCameras(on); }
+          else if (layerId === 'boundary') { state.boundary = on; applyBoundary(on); }
+          else if (layerId === 'leaseAreas') { state.leaseAreas = on; applyLeaseAreas(on); }
+          else if (layerId === 'availableLands') { state.availableLands = on; applyAvailableLands(on); }
+        });
+        toggleEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const on = !toggleEl.classList.contains('on');
+          state[layerId] = on;
+          toggleEl.classList.toggle('on', on);
+          saveState(state);
+          if (layerId === 'eventMarkers') { state.eventMarkers = on; applyEventMarkers(on); }
+          else if (layerId === 'aiRisk') { state.aiRisk = on; applyAiRisk(on); }
+          else if (layerId === 'cameras') { state.cameras = on; applyCameras(on); }
+          else if (layerId === 'boundary') { state.boundary = on; applyBoundary(on); }
+          else if (layerId === 'leaseAreas') { state.leaseAreas = on; applyLeaseAreas(on); }
+          else if (layerId === 'availableLands') { state.availableLands = on; applyAvailableLands(on); }
+        });
+      });
+
+      document.querySelectorAll('.layer-panel-item.basemap').forEach(item => {
+        const basemap = item.dataset.basemap;
+        const toggleEl = item.querySelector('.layer-panel-toggle');
+        if (!toggleEl) return;
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.layer-panel-toggle')) return;
+          state.basemap = basemap;
+          saveState(state);
+          applyBasemap(basemap);
+        });
+        toggleEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.basemap = basemap;
+          saveState(state);
+          applyBasemap(basemap);
+        });
+      });
+
+      document.getElementById('layer-panel-collapse').addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.collapsed = !panel.classList.toggle('collapsed');
+        saveState(state);
+      });
+      document.getElementById('layer-panel-header').addEventListener('click', (e) => {
+        if (e.target.closest('.layer-panel-toggle-btn')) return;
+        state.collapsed = !panel.classList.toggle('collapsed');
+        saveState(state);
+      });
+    })();
+
+    function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+    const socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000, reconnectionDelayMax: 30000 });
+    socket.on('event', pushEvent);
+    socket.on('connect', ()=>{ hideReconnecting(); if (typeof loadInitial === 'function') loadInitial(); });
+    socket.on('disconnect', ()=> showReconnecting());
+    socket.on('connect_error', ()=> showReconnecting());
+
+    setInterval(()=>{ updateCommandBar(); if (document.body.classList.contains('command-mode')) updateCommandModePanels(); }, 1000);
+    setInterval(()=>{ if (showRiskLayer && map.hasLayer(riskLayer)) updateRiskLayer(); }, riskUpdateInterval);
+
+    setInterval(()=>{
+      if (!autoCommandEnabled || !document.body.classList.contains('command-mode') || tourActive) return;
+      if (Date.now() - lastInteractionTime >= 10000) runAutoTourStep();
+    }, 1000);
+
+    map.on('dragstart zoomstart click touchstart', onUserInteraction);
+    function updateMarkerZoomScale(){
+      const z = map.getZoom();
+      const el = map.getContainer();
+      el.classList.remove('zoom-out','zoom-mid','zoom-in');
+      if (z < 8) el.classList.add('zoom-out');
+      else if (z < 12) el.classList.add('zoom-mid');
+      else el.classList.add('zoom-in');
+    }
+    map.on('zoomend', updateMarkerZoomScale);
+    updateMarkerZoomScale();
+
+    const demoToggle = document.getElementById('demo-toggle');
+    if (demoToggle) {
+      demoToggle.textContent = demoMode ? 'DEMO: YOQIQ' : 'DEMO';
+      demoToggle.classList.toggle('active', demoMode);
+      demoToggle.onclick = ()=>{
+        demoMode = !demoMode;
+        safeStorage.setItem('smart-forest-demo', demoMode);
+        demoToggle.textContent = demoMode ? 'DEMO: YOQIQ' : 'DEMO';
+        demoToggle.classList.toggle('active', demoMode);
+        if (demoMode) {
+          if (!showRiskLayer) { showRiskLayer = true; map.addLayer(riskLayer); document.getElementById('risk-legend')?.classList.add('visible'); document.getElementById('risk-toggle')?.classList.add('active'); }
+          runDemoStep();
+          function scheduleDemo(){ demoIntervalId = setTimeout(()=>{ runDemoStep(); scheduleDemo(); }, 18000 + Math.random()*12000); }
+          scheduleDemo();
+          function scheduleDemoCamera(){ demoCameraIntervalId = setTimeout(()=>{ runDemoCameraHighlight(); scheduleDemoCamera(); }, 20000 + Math.random()*20000); }
+          scheduleDemoCamera();
+        } else {
+          if (demoIntervalId) { clearTimeout(demoIntervalId); demoIntervalId = null; }
+          if (demoCameraIntervalId) { clearTimeout(demoCameraIntervalId); demoCameraIntervalId = null; }
+        }
+      };
+      if (demoMode) {
+        if (!showRiskLayer) { showRiskLayer = true; map.addLayer(riskLayer); document.getElementById('risk-legend')?.classList.add('visible'); document.getElementById('risk-toggle')?.classList.add('active'); }
+        setTimeout(runDemoStep, 3000);
+        function scheduleDemo(){ demoIntervalId = setTimeout(()=>{ runDemoStep(); scheduleDemo(); }, 18000 + Math.random()*12000); }
+        scheduleDemo();
+        function scheduleDemoCamera(){ demoCameraIntervalId = setTimeout(()=>{ runDemoCameraHighlight(); scheduleDemoCamera(); }, 20000 + Math.random()*20000); }
+        scheduleDemoCamera();
+      }
+    }
+
+    const autoToggle = document.getElementById('auto-command-toggle');
+    if (autoToggle) {
+      autoToggle.textContent = autoCommandEnabled ? 'AVTO BUYRUQ: YOQIQ' : 'AVTO BUYRUQ: O\'CHIQ';
+      autoToggle.classList.toggle('active', autoCommandEnabled);
+      autoToggle.onclick = ()=>{
+        autoCommandEnabled = !autoCommandEnabled;
+        safeStorage.setItem('smart-forest-auto-command', autoCommandEnabled);
+        autoToggle.textContent = autoCommandEnabled ? 'AVTO BUYRUQ: YOQIQ' : 'AVTO BUYRUQ: O\'CHIQ';
+        autoToggle.classList.toggle('active', autoCommandEnabled);
+        if (!autoCommandEnabled) stopAutoTour();
+      };
+    }
+
+    const introEl = document.getElementById('intro-overlay');
+    const introStatus = document.getElementById('intro-status');
+    if (introStatus) {
+      setTimeout(()=>{ introStatus.textContent = 'Barcha tizimlar ishlayapti'; }, 1000);
+    }
+    if (introEl) {
+      introEl.addEventListener('animationend', (e)=>{ if (e.animationName === 'introOverlay') introEl.remove(); });
+    }
+    map.whenReady(()=>{
+      map.flyToBounds(UZB_BOUNDS, { padding: [24, 24], duration: 3.6, easeLinearity: 0.2 });
+      loadRegions();
+      loadInitial();
+      loadLandParcels();
+      if (showRiskLayer) {
+        riskLastUpdate = 0;
+        updateRiskLayer();
+        map.addLayer(riskLayer);
+        document.getElementById('risk-legend')?.classList.add('visible');
+        document.getElementById('map')?.classList.add('risk-breathing');
+      }
+    });
+  </script>
+</body>
+</html>
