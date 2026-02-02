@@ -1,0 +1,7 @@
+[
+  {"id":"dfa6f55a-298b-4bf2-a715-64ac4a24daa8","title":"Forest fire","latitude":40.3646373513647,"longitude":68.1575712953375,"severity":"low","createdAt":"2026-01-31T14:18:05.585Z"},
+  {"id":"7a1eb8b6-9347-46a4-aab3-8b66af2fc01f","title":"Smoke detected","latitude":40.5032019420849,"longitude":66.6332990984323,"severity":"medium","createdAt":"2026-01-31T14:17:55.513Z"},
+  {"id":"052422b3-f4a5-454f-9ee1-4f9d38d4f5ed","title":"Tree disease detected","latitude":43.981179660578,"longitude":58.2225584541329,"severity":"critical","createdAt":"2026-01-31T14:17:44.621Z"},
+  {"id":"5e200de0-df88-41d4-822b-6902ad98e51f","title":"Tree disease detected","latitude":42.9732606491409,"longitude":58.8735097997731,"severity":"low","createdAt":"2026-01-31T14:17:34.567Z"},
+  {"id":"0a2d34a9-2de6-48ba-b8fe-aef385958c82","title":"Tree disease detected","latitude":39.8615008554554,"longitude":64.6962989009092,"severity":"medium","createdAt":"2026-01-31T14:17:26.532Z"}
+]
