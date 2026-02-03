@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import DashboardTopbar from '@/components/DashboardTopbar';
@@ -12,21 +12,23 @@ export default function DashboardLayoutClient({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated } = useAuth();
-  const [ready, setReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const isMapPage = pathname === '/dashboard/map';
 
   useEffect(() => {
-    setReady(true);
+    setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!mounted) return;
     if (!isAuthenticated) {
       router.replace('/login');
     }
-  }, [ready, isAuthenticated, router]);
+  }, [mounted, isAuthenticated, router]);
 
-  if (!ready) {
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
         <div className="animate-pulse text-slate-500">Yuklanmoqda...</div>
@@ -46,8 +48,8 @@ export default function DashboardLayoutClient({
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <DashboardSidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <DashboardTopbar />
-        <main className="flex-1 overflow-auto p-6">
+        {!isMapPage && <DashboardTopbar />}
+        <main className={isMapPage ? 'flex-1 overflow-hidden p-0' : 'flex-1 overflow-auto p-6'}>
           {children}
         </main>
       </div>

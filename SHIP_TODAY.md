@@ -47,15 +47,15 @@ npm run start:dev
 ### 6. Test (30 sec)
 ```bash
 # Create event
-curl -X POST http://localhost:3000/api/v1/events -H "Content-Type: application/json" -d "{\"title\":\"Test\",\"latitude\":37.77,\"longitude\":-122.42}"
+curl -X POST http://localhost:9000/api/v1/events -H "Content-Type: application/json" -d "{\"title\":\"Test\",\"latitude\":37.77,\"longitude\":-122.42}"
 
 # List events (world bbox)
-curl "http://localhost:3000/api/v1/events?bbox=-180,-90,180,90"
+curl "http://localhost:9000/api/v1/events?bbox=-180,-90,180,90"
 ```
 
 ### 7. Map (instant)
 ```
-http://localhost:3000/map/
+http://localhost:9000/map/
 ```
 
 ---

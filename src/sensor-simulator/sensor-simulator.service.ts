@@ -45,7 +45,7 @@ export class SensorSimulatorService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.stopped = false;
     this.scheduleNext();
-    this.logger.log('Sensor simulator started (8–12s interval, Uzbekistan polygon)');
+    this.logger.log('Sensor simulator started (10s interval, Uzbekistan polygon)');
   }
 
   onModuleDestroy() {
@@ -55,7 +55,7 @@ export class SensorSimulatorService implements OnModuleInit, OnModuleDestroy {
 
   private scheduleNext() {
     if (this.stopped) return;
-    const delayMs = 8000 + Math.random() * 4000;
+    const delayMs = 10000;
     this.timeout = setTimeout(() => this.tick(), delayMs);
   }
 

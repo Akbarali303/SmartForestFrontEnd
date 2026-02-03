@@ -62,7 +62,7 @@ src/
 ### Create event
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/events \
+curl -X POST http://localhost:9000/api/v1/events \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Tree health inspection",
@@ -77,13 +77,13 @@ curl -X POST http://localhost:3000/api/v1/events \
 
 ```bash
 # bbox: minLon,minLat,maxLon,maxLat (WGS84)
-curl "http://localhost:3000/api/v1/events?bbox=-122.5,37.5,-122.0,38.0"
+curl "http://localhost:9000/api/v1/events?bbox=-122.5,37.5,-122.0,38.0"
 ```
 
 ### Get single event
 
 ```bash
-curl http://localhost:3000/api/v1/events/{uuid}
+curl http://localhost:9000/api/v1/events/{uuid}
 ```
 
 ---

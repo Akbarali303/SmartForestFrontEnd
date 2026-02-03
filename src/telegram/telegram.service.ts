@@ -13,9 +13,11 @@ export class TelegramService {
     this.token = process.env.TELEGRAM_BOT_TOKEN?.trim();
     this.chatId = process.env.TELEGRAM_CHAT_ID?.trim();
     this.enabled = !!(this.token && this.chatId);
-    if (!this.enabled && (this.token || this.chatId)) {
+    if (this.enabled) {
+      this.logger.log(`Telegram: yoqilgan, Chat ID=${this.chatId}`);
+    } else {
       this.logger.warn(
-        'Telegram: TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHAT_ID berilmagan — xabarlar yuborilmaydi',
+        'Telegram: o\'chirilgan — .env da TELEGRAM_BOT_TOKEN va TELEGRAM_CHAT_ID o\'rnating (masalan TELEGRAM_CHAT_ID=247078210)',
       );
     }
   }
@@ -25,7 +27,7 @@ export class TelegramService {
   }
 
   /**
-   * Muhim hodisa haqida Telegramga xabar yuboradi (faqat high/critical darajada).
+   * Hodisa haqida Telegramga xabar yuboradi (medium, high, critical).
    */
   async sendAlert(params: {
     title: string;
@@ -37,7 +39,7 @@ export class TelegramService {
   }): Promise<boolean> {
     if (!this.enabled) return false;
     const severityLower = params.severity?.toLowerCase() ?? '';
-    if (severityLower !== 'high' && severityLower !== 'critical') {
+    if (severityLower !== 'medium' && severityLower !== 'high' && severityLower !== 'critical') {
       return false;
     }
 
@@ -53,7 +55,8 @@ export class TelegramService {
     source?: string;
     description?: string;
   }): string {
-    const emoji = params.severity?.toLowerCase() === 'critical' ? '🚨' : '⚠️';
+    const sev = params.severity?.toLowerCase();
+    const emoji = sev === 'critical' ? '🚨' : sev === 'high' ? '⚠️' : '📋';
     const lines = [
       `${emoji} Smart Forest — hodisa`,
       '',

@@ -1,15 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  );
+type EventItem = {
+  id: string;
+  title: string;
+  latitude: number;
+  longitude: number;
+  severity: string;
+  createdAt: string;
+};
+
+const SEVERITY_LABEL: Record<string, string> = {
+  critical: 'Kritik',
+  high: 'Yuqori',
+  medium: "O'rta",
+  low: 'Past',
+};
+
+function formatEventTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Hozir';
+    if (diffMin < 60) return `${diffMin} min oldin`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `${diffH} soat oldin`;
+    return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '—';
+  }
 }
+
 function BellIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,10 +43,11 @@ function BellIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+/** Globus — til / dunyo tanlash uchun tushunarli ikon */
 function GlobeIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0h.5a2.5 2.5 0 002.5-2.5V3.935M12 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
     </svg>
   );
 }
@@ -31,26 +58,36 @@ const LANGUAGES = [
   { code: 'ru', label: 'Ruscha' },
 ];
 
+const DISPLAY_NAMES: Record<string, string> = {
+  admin: 'A.Turdiyev',
+};
+function displayName(user: string | null): string {
+  if (!user) return 'Boshqaruvchi';
+  return DISPLAY_NAMES[user] ?? user;
+}
+
 export default function DashboardTopbar() {
   const { user } = useAuth();
-  const [search, setSearch] = useState('');
   const [langOpen, setLangOpen] = useState(false);
   const [lang, setLang] = useState(LANGUAGES[0]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    setEventsLoading(true);
+    fetch('/api/v1/events')
+      .then((r) => r.json())
+      .then((data: EventItem[]) => {
+        setEvents(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setEvents([]))
+      .finally(() => setEventsLoading(false));
+  }, [notifOpen]);
 
   return (
-    <header className="h-[var(--topbar-height)] flex items-center justify-between px-6 bg-white border-b border-slate-200 shrink-0">
-      <div className="flex items-center gap-4 flex-1 max-w-xl">
-        <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="search"
-            placeholder="Qidirish..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:border-forest-500 focus:ring-2 focus:ring-forest-500/20 outline-none transition text-sm"
-          />
-        </div>
-      </div>
+    <header className="h-[var(--topbar-height)] flex items-center justify-end px-6 bg-white border-b border-slate-200 shrink-0">
       <div className="flex items-center gap-2">
         <div className="relative">
           <button
@@ -82,20 +119,73 @@ export default function DashboardTopbar() {
             </>
           )}
         </div>
-        <button
-          type="button"
-          className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition relative"
-          aria-label="Bildirishnomalar"
-        >
-          <BellIcon className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setNotifOpen((o) => !o)}
+            className={`p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition relative ${events.length > 0 ? 'animate-pulse' : ''}`}
+            aria-label="Bildirishnomalar — hodisalar"
+            aria-expanded={notifOpen}
+          >
+            <BellIcon className={`w-5 h-5 ${events.length > 0 ? 'text-forest-600' : ''}`} />
+            {events.length > 0 && (
+              <>
+                <span className="absolute top-1.5 right-1.5 flex h-2 w-2" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+              </>
+            )}
+          </button>
+          {notifOpen && (
+            <>
+              <div className="fixed inset-0 z-10" aria-hidden onClick={() => setNotifOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 w-80 max-h-[min(24rem,70vh)] bg-white rounded-xl shadow-lg border border-slate-200 z-20 flex flex-col">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <h2 className="text-sm font-semibold text-slate-800">Hodisalar</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Barcha aniqlangan hodisalar</p>
+                </div>
+                <div className="overflow-y-auto flex-1 min-h-0">
+                  {eventsLoading ? (
+                    <div className="p-6 text-center text-sm text-slate-500">Yuklanmoqda...</div>
+                  ) : events.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-slate-500">Hodisalar yo‘q</div>
+                  ) : (
+                    <ul className="py-1">
+                      {events.map((e) => (
+                        <li key={e.id} className="px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100 last:border-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{e.title}</p>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <span
+                              className={`inline-flex text-xs font-medium px-1.5 py-0.5 rounded ${
+                                e.severity === 'critical'
+                                  ? 'bg-red-100 text-red-700'
+                                  : e.severity === 'high'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : e.severity === 'medium'
+                                      ? 'bg-slate-100 text-slate-600'
+                                      : 'bg-slate-50 text-slate-500'
+                              }`}
+                            >
+                              {SEVERITY_LABEL[e.severity] ?? e.severity}
+                            </span>
+                            <span className="text-xs text-slate-400 shrink-0">{formatEventTime(e.createdAt)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
           <div className="w-9 h-9 rounded-full bg-forest-100 text-forest-700 flex items-center justify-center font-semibold text-sm">
-            {user ? user.charAt(0).toUpperCase() : 'A'}
+            {displayName(user).charAt(0).toUpperCase()}
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-slate-800">{user || 'Boshqaruvchi'}</p>
+            <p className="text-sm font-medium text-slate-800">{displayName(user)}</p>
             <p className="text-xs text-slate-500">Tizim boshqaruvchisi</p>
           </div>
         </div>

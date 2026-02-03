@@ -4,8 +4,8 @@ export default function ForestFreePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Bo‘sh yerlar</h1>
-        <p className="text-slate-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Bo‘sh yerlar</h1>
+        <p className="text-slate-500 mt-1 text-sm">
           Hali ijaraga berilmagan hududlar, xaritada alohida rangda ko‘rsatish
         </p>
       </div>

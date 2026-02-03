@@ -5,8 +5,13 @@
   "scripts": {
     "build": "npx nest build",
     "start": "npx nest start",
+    "start:9001": "cross-env PORT=9001 npx nest start",
     "start:dev": "npx nest start --watch",
+    "start:dev:9001": "cross-env PORT=9001 npx nest start --watch",
+    "camera:cam1": "node web/scripts/camera-cam1.js",
     "dev": "npm run dev --prefix web",
+    "dev:all": "concurrently -n backend,web -c blue,green \"npm run start:dev\" \"npm run dev:custom --prefix web\"",
+    "dev:full": "docker-compose up -d && npm run dev:all",
     "start:debug": "npx nest start --debug --watch",
     "start:prod": "node dist/main",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/infrastructure/database/data-source.ts",
@@ -37,6 +42,8 @@
     "@nestjs/cli": "^10.0.0",
     "@types/express": "^4.17.17",
     "@types/node": "^20.0.0",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.0.0"

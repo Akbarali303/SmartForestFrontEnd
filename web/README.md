@@ -29,7 +29,7 @@ Next.js ilovasi: Login + Dashboard + Map bitta tizimda.
    # Loyiha ildizida (SmartForestFrontEnd-main)
    npm run start:dev
    ```
-   Backend `http://localhost:3000` da ishlaydi (map: `/map/`, API: `/api/v1`).
+   Backend `http://localhost:9000` da ishlaydi (map: `/map/`, API: `/api/v1`).
 
 3. **Frontend (Next.js)** — ikkinchi terminalda:
    ```bash
@@ -37,10 +37,10 @@ Next.js ilovasi: Login + Dashboard + Map bitta tizimda.
    npm install
    npm run dev
    ```
-   Frontend `http://localhost:3001` da ochiladi.  
-   **Agar 3001 band bo‘lsa:** `npm run dev:3002` va brauzerda `http://localhost:3002` oching.
+   Frontend `http://localhost:9002` da ochiladi.  
+   **Agar 9002 band bo‘lsa:** `npm run dev:9001` va brauzerda `http://localhost:9001` oching.
 
-4. Brauzerda: **http://localhost:3001** (yoki 3002 agar `dev:3002` ishlatgan bo‘lsangiz)
+4. Brauzerda: **http://localhost:9002** (yoki 9001 agar `dev:9001` ishlatgan bo‘lsangiz)
    - Login: `admin` / `admin123`
    - Kirishdan keyin Dashboard ochiladi
    - Sidebar → **Map** bosilsa mavjud map sahifa dashboard ichida ochiladi (bir xil origin orqali, iframe bloklanmaydi)
@@ -50,7 +50,7 @@ Next.js ilovasi: Login + Dashboard + Map bitta tizimda.
 `web/.env.local` da (ixtiyoriy):
 
 ```
-BACKEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:9000
 ```
 
 Agar backend boshqa portda yoki boshqa hostda bo‘lsa, shu URL ni o‘zgartiring.

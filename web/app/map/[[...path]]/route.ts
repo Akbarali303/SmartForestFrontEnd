@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:3000';
+const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:9000';
 
 const ERROR_HTML = `
 <!DOCTYPE html>

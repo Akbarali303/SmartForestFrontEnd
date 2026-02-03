@@ -1,9 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import StatCard from '@/components/StatCard';
 
-const DEMO_STATS = [
-  { title: 'O‘rmon maydoni', value: '12 450 ga', icon: ForestIcon },
+const OTHER_STATS = [
   { title: 'Faol kamerlar', value: '24', icon: CameraIcon },
   { title: 'Xavfli zonalar', value: '8', icon: AlertIcon },
   { title: 'Monitoring hududlari', value: '14', icon: MapIcon },
@@ -71,6 +71,29 @@ function EventIcon() {
 }
 
 export default function DashboardPage() {
+  const [forestAreaHa, setForestAreaHa] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/v1/forest-areas')
+      .then((r) => r.json())
+      .then((data: Array<{ area_ha?: number }>) => {
+        if (!Array.isArray(data)) return;
+        const total = data.reduce((sum, row) => sum + (Number(row.area_ha) || 0), 0);
+        setForestAreaHa(total);
+      })
+      .catch(() => setForestAreaHa(0));
+  }, []);
+
+  const forestAreaValue =
+    forestAreaHa === null
+      ? '—'
+      : `${Number(forestAreaHa).toLocaleString('uz')} ga`;
+
+  const stats = [
+    { title: "O'rmon maydoni", value: forestAreaValue, icon: ForestIcon },
+    ...OTHER_STATS,
+  ];
+
   if (typeof window === 'undefined') {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -81,12 +104,12 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Boshqaruv paneli</h1>
-        <p className="text-slate-500 mt-0.5">Monitoring va statistika</p>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Boshqaruv paneli</h1>
+        <p className="text-slate-500 mt-1 text-sm">Monitoring va statistika</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {DEMO_STATS.map((stat) => (
+        {stats.map((stat) => (
           <StatCard
             key={stat.title}
             title={stat.title}

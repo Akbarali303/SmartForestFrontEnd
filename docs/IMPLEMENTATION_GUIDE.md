@@ -137,10 +137,10 @@ ORDER BY created_at DESC
 
 ```bash
 # Create event
-curl -X POST http://localhost:3000/api/v1/events \
+curl -X POST http://localhost:9000/api/v1/events \
   -H "Content-Type: application/json" \
   -d '{"title":"Test","latitude":37.77,"longitude":-122.42}'
 
 # Get by bbox (San Francisco area)
-curl "http://localhost:3000/api/v1/events?bbox=-122.5,37.5,-122.3,37.9"
+curl "http://localhost:9000/api/v1/events?bbox=-122.5,37.5,-122.3,37.9"
 ```

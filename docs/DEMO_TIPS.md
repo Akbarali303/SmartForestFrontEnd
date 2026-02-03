@@ -28,9 +28,9 @@ Run before the demo so the map isn't empty:
 
 ```bash
 # Mix of severities and locations
-curl -X POST http://localhost:3000/api/v1/events -H "Content-Type: application/json" -d '{"title":"Fire risk - Sector A","latitude":37.77,"longitude":-122.42,"severity":"high","description":"Elevated temperature reading"}'
-curl -X POST http://localhost:3000/api/v1/events -H "Content-Type: application/json" -d '{"title":"Routine inspection","latitude":37.78,"longitude":-122.40,"severity":"medium","description":"Quarterly health check"}'
-curl -X POST http://localhost:3000/api/v1/events -H "Content-Type: application/json" -d '{"title":"Minor observation","latitude":37.76,"longitude":-122.44,"severity":"low","description":"Small debris noted"}'
+curl -X POST http://localhost:9000/api/v1/events -H "Content-Type: application/json" -d '{"title":"Fire risk - Sector A","latitude":37.77,"longitude":-122.42,"severity":"high","description":"Elevated temperature reading"}'
+curl -X POST http://localhost:9000/api/v1/events -H "Content-Type: application/json" -d '{"title":"Routine inspection","latitude":37.78,"longitude":-122.40,"severity":"medium","description":"Quarterly health check"}'
+curl -X POST http://localhost:9000/api/v1/events -H "Content-Type: application/json" -d '{"title":"Minor observation","latitude":37.76,"longitude":-122.44,"severity":"low","description":"Small debris noted"}'
 ```
 
 ---

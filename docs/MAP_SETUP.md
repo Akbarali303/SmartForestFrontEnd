@@ -27,11 +27,11 @@ npm run start:dev
 
 ### 3. Open map
 ```
-http://localhost:3000/map/
+http://localhost:9000/map/
 ```
 or
 ```
-http://localhost:3000/map/index.html
+http://localhost:9000/map/index.html
 ```
 
 ---
@@ -96,7 +96,7 @@ map/
 
 If opening `map/index.html` directly (file://):
 
-1. Set API to full URL: `const API = 'http://localhost:3000/api/v1';`
+1. Set API to full URL: `const API = 'http://localhost:9000/api/v1';`
 2. Enable CORS on NestJS: `app.enableCors({ origin: '*' });` in main.ts
 3. Run NestJS and open the HTML file in browser
 
@@ -104,4 +104,4 @@ Or run a simple server:
 ```bash
 npx serve map
 ```
-Then set `API = 'http://localhost:3000/api/v1'` and ensure CORS allows the serve origin.
+Then set `API = 'http://localhost:9000/api/v1'` and ensure CORS allows the serve origin.

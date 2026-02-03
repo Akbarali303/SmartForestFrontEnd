@@ -763,6 +763,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
   <script>
     const _storageFallback = {};
     let _storageBlocked = false;
@@ -797,9 +798,43 @@
     };
     const COLORS = { low:'#4a6b52', medium:'#8b7355', high:'#a65d3a', critical:'#b85450' };
     const RECONNECT_DELAYS = [1500, 3000, 6000, 12000, 20000];
+    const RECONNECT_TO_OFFLINE_MS = 15000;
     let reconnectIndicatorVisible = false;
-    function showReconnecting(){ if (!reconnectIndicatorVisible){ reconnectIndicatorVisible=true; const el=document.getElementById('reconnecting-indicator'); if(el)el.classList.add('visible'); } }
-    function hideReconnecting(){ if (reconnectIndicatorVisible){ reconnectIndicatorVisible=false; const el=document.getElementById('reconnecting-indicator'); if(el)el.classList.remove('visible'); } }
+    var reconnectHideTimeout = null;
+    var reconnectToOfflineTimeout = null;
+    let isOfflineMode = false;
+    var offlineDemoIntervalId = null;
+    function showReconnecting(){
+      if (isOfflineMode) return;
+      if (!reconnectIndicatorVisible){
+        reconnectIndicatorVisible = true;
+        const el = document.getElementById('reconnecting-indicator');
+        if (el) { el.textContent = 'Qayta ulanmoqda…'; el.classList.add('visible'); }
+        if (!reconnectToOfflineTimeout) {
+          reconnectToOfflineTimeout = setTimeout(function(){
+            reconnectToOfflineTimeout = null;
+            if (reconnectHideTimeout) { clearTimeout(reconnectHideTimeout); reconnectHideTimeout = null; }
+            reconnectIndicatorVisible = false;
+            isOfflineMode = true;
+            const ind = document.getElementById('reconnecting-indicator');
+            if (ind) { ind.classList.remove('visible'); }
+            if (typeof createDemoEvent === 'function' && typeof pushEvent === 'function') {
+              if (offlineDemoIntervalId) clearInterval(offlineDemoIntervalId);
+              function tick(){ var e = createDemoEvent(); if (e) pushEvent(e); }
+              tick();
+              offlineDemoIntervalId = setInterval(tick, 10000);
+            }
+          }, RECONNECT_TO_OFFLINE_MS);
+        }
+      }
+    }
+    function hideReconnecting(){
+      if (reconnectToOfflineTimeout) { clearTimeout(reconnectToOfflineTimeout); reconnectToOfflineTimeout = null; }
+      if (offlineDemoIntervalId) { clearInterval(offlineDemoIntervalId); offlineDemoIntervalId = null; }
+      isOfflineMode = false;
+      if (reconnectHideTimeout){ clearTimeout(reconnectHideTimeout); reconnectHideTimeout = null; }
+      if (reconnectIndicatorVisible){ reconnectIndicatorVisible = false; const el = document.getElementById('reconnecting-indicator'); if (el) { el.textContent = 'Qayta ulanmoqda…'; el.classList.remove('visible'); } }
+    }
     async function fetchWithRetry(url, opts, maxAttempts){
       maxAttempts = maxAttempts ?? 5;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -822,13 +857,14 @@
     const UZB_BOUNDS = L.latLngBounds(L.latLng(36.6, 55.6), L.latLng(45.9, 73.6));
     const UZB_CENTER = [41.25, 64.6];
     const map = L.map('map', { minZoom: 5, maxZoom: 18, maxBoundsViscosity: 1, zoomControl: false });
-    map.setView(UZB_CENTER, 5);
+    map.setView(UZB_CENTER, 6);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
     map.setMaxBounds(UZB_BOUNDS.pad(0.15));
     const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:''});
     const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:''});
     const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:''});
     const hybridLabelsTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{attribution:'',opacity:0.65});
+    const hybridStreetTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:''});
     const topographicTiles = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:''});
 
     if (!map.getPane('maskPane')) {
@@ -892,6 +928,7 @@
     let forestContourLayer = null;
     let leaseAreasLayer = null;
     let availableLandsLayer = null;
+    let savedForestAreasLayer = null;
     let landParcelsGeoJson = null;
     let selectedLandLayer = null;
     let allLandLayers = [];
@@ -990,6 +1027,22 @@
       }
       return false;
     }
+    function getForestPolygonFeatures(){
+      const features = [];
+      if (typeof forestContourLayer !== 'undefined' && forestContourLayer && typeof forestContourLayer.eachLayer === 'function') {
+        forestContourLayer.eachLayer(function(l){ if (l.feature && l.feature.geometry) features.push(l.feature); });
+      }
+      if (typeof savedForestAreasLayer !== 'undefined' && savedForestAreasLayer && typeof savedForestAreasLayer.eachLayer === 'function') {
+        savedForestAreasLayer.eachLayer(function(l){ if (l.feature && l.feature.geometry) features.push(l.feature); });
+      }
+      return features;
+    }
+    function pointInForest(lng, lat){
+      const forestFeatures = getForestPolygonFeatures();
+      if (!forestFeatures.length) return false;
+      const lngLat = [lng, lat];
+      return forestFeatures.some(function(f){ return pointInFeature(lngLat, f); });
+    }
 
     let statsCache = { events: null, result: null };
     function computeRegionStats(events){
@@ -1033,7 +1086,9 @@
     }
 
     function updateCommandBar(){
-      const events = typeof allEvents !== 'undefined' ? allEvents : [];
+      const forestFeatures = getForestPolygonFeatures();
+      const baseEvents = typeof allEvents !== 'undefined' ? allEvents : [];
+      const events = forestFeatures.length ? baseEvents.filter(function(e){ return pointInForest(e.longitude, e.latitude); }) : [];
       const sensorKeys = new Set();
       events.forEach(e=> sensorKeys.add(`${e.latitude.toFixed(3)},${e.longitude.toFixed(3)}`));
       const critical = events.filter(e=>(e.severity||'').toLowerCase()==='critical').length;
@@ -1064,10 +1119,19 @@
     }
 
     function applyRegionFilter(){
-      const events = filteredRegionFeature ? allEvents.filter(e=> pointInFeature([e.longitude, e.latitude], filteredRegionFeature)) : allEvents;
+      const forestFeatures = getForestPolygonFeatures();
+      let events = forestFeatures.length ? allEvents.filter(function(e){ return pointInForest(e.longitude, e.latitude); }) : [];
+      events = filteredRegionFeature ? events.filter(function(e){ return pointInFeature([e.longitude, e.latitude], filteredRegionFeature); }) : events;
       syncMarkersToEvents(events);
       if (map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(events));
       updateStatsPanel(events);
+      if (events.length > 0 && typeof markerLayer !== 'undefined' && markerLayer && markerLayer.getBounds && markerLayer.getLayers && markerLayer.getLayers().length > 0) {
+        const b = markerLayer.getBounds();
+        if (b && b.isValid()) map.fitBounds(b, { padding: [24, 24], animate: true, duration: 0.6 });
+      } else if (typeof forestContourLayer !== 'undefined' && forestContourLayer && forestContourLayer.getBounds && forestContourLayer.getLayers && forestContourLayer.getLayers().length > 0) {
+        const fb = forestContourLayer.getBounds();
+        if (fb && fb.isValid()) map.fitBounds(fb, { padding: [24, 24], animate: true, duration: 0.6 });
+      }
     }
 
     function loadRegions(){
@@ -1114,23 +1178,22 @@
           const maxBoundsPad = bounds.pad(0.08);
           const introStillVisible = document.getElementById('intro-overlay');
           if (!introStillVisible) {
-            map.fitBounds(bounds, { padding: [24, 24], animate: true, duration: 0.8 });
+            var fitTo = bounds;
+            if (typeof markerLayer !== 'undefined' && markerLayer && markerLayer.getBounds && markerLayer.getLayers && markerLayer.getLayers().length > 0) {
+              var mb = markerLayer.getBounds();
+              if (mb && mb.isValid()) fitTo = mb;
+            } else if (typeof forestContourLayer !== 'undefined' && forestContourLayer && forestContourLayer.getBounds && forestContourLayer.getLayers && forestContourLayer.getLayers().length > 0) {
+              var fb = forestContourLayer.getBounds();
+              if (fb && fb.isValid()) fitTo = fb;
+            }
+            map.fitBounds(fitTo, { padding: [24, 24], animate: true, duration: 0.8 });
           }
           map.setMaxBounds(maxBoundsPad);
           map.setMinZoom(map.getZoom());
         }
         updateCommandBar();
         if (showRiskLayer) updateRiskLayer();
-        cameraLayer.clearLayers();
-        CAMERAS.forEach(c=> createCameraMarker(c));
-        liveCamerasData = generateLiveCameras();
-        if (showCamerasLayer) {
-          if (cameraClusterLayer) map.removeLayer(cameraClusterLayer);
-          cameraClusterLayer = buildCameraClusterLayer();
-          map.addLayer(cameraClusterLayer);
-          if (map.hasLayer(markerLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
-          document.getElementById('map')?.classList.add('cameras-active');
-        }
+        refreshDemosForForest();
         regionsLoaded = true;
         tryHideMapSkeleton();
         if (window.__applyBoundaryFromPanel) window.__applyBoundaryFromPanel();
@@ -1274,24 +1337,17 @@
         try { return polys.reduce((a,p)=> turf.union(a,p), polys[0])?.geometry || polys[0].geometry; } catch(__){ return polys[0].geometry; }
       }
     }
-    const FOREST_ZONES_URL = '/public/geo/forest_zones_demo.json';
-    function loadForestZones(){
-      return fetch(FOREST_ZONES_URL).then(r=>r.ok?r.json():Promise.reject()).then(geojson=>{
-        const features = (geojson.features || []).map(f=> makeIrregularPolygon({...f, properties: {...(f.properties||{}), type: 'forest_demo'}}));
-        return features.length ? { type:'FeatureCollection', features } : null;
-      }).catch(()=>null);
-    }
     const UZ_REGIONS_URL = '/public/geo/uzbekistan_regions.geojson';
     function loadLandParcels(){
       Promise.all([
-        loadForestZones(),
-        fetch('/public/geo/land_parcels.json').then(r=>r.ok?r.json():Promise.reject()),
+        Promise.resolve(null),
+        Promise.resolve(null),
         fetch(UZ_REGIONS_URL).then(r=>r.ok?r.json():Promise.resolve(null)).catch(()=>null)
       ]).then(([forestZones, geojson, regionsGeo])=>{
         landParcelsGeoJson = geojson;
         selectedLandLayer = null;
         allLandLayers = [];
-        let features = (geojson.features || []).map(makeIrregularPolygon);
+        let features = ((geojson && geojson.features) || []).map(makeIrregularPolygon);
         const leaseFeatures = features.filter(f=>(f.properties||{}).lease_status==='leased');
         const availableFeatures = features.filter(f=>(f.properties||{}).lease_status!=='leased');
         let uzbBoundary = null;
@@ -1324,9 +1380,10 @@
         if (forestContourLayer) { map.removeLayer(forestContourLayer); forestContourLayer = null; }
         if (leaseAreasLayer) { map.removeLayer(leaseAreasLayer); leaseAreasLayer = null; }
         if (availableLandsLayer) { map.removeLayer(availableLandsLayer); availableLandsLayer = null; }
+        if (savedForestAreasLayer) { map.removeLayer(savedForestAreasLayer); savedForestAreasLayer = null; }
         forestContourLayer = forestGeo ? L.geoJSON(forestGeo, { style: forestStyle }) : L.layerGroup();
-        forestContourLayer.eachLayer(function(l){ l.on('add', function(){ const el = l.getElement?.(); if (el) el.classList.add('land-parcel-path','forest-contour'); }); });
-        forestContourLayer.bringToBack();
+        if (typeof forestContourLayer.eachLayer === 'function') forestContourLayer.eachLayer(function(l){ l.on('add', function(){ const el = l.getElement?.(); if (el) el.classList.add('land-parcel-path','forest-contour'); }); });
+        if (typeof forestContourLayer.bringToBack === 'function') forestContourLayer.bringToBack();
         function setupLandLayer(layer,feature,baseStyle,isLease){
           layer._landType = isLease ? 'lease' : 'available';
           layer._feature = feature;
@@ -1447,13 +1504,65 @@
           applyLandSelection(null);
         });
         if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+        const forestAreasUrl = (typeof window.SMART_FOREST_BACKEND === 'string' && window.SMART_FOREST_BACKEND ? window.SMART_FOREST_BACKEND : '') + '/api/v1/forest-areas';
+        fetch(forestAreasUrl).then(function(r){
+          if (!r.ok) { console.warn('[Smart Forest] O\'rmon yerlari API javob bermadi:', r.status, r.statusText); return Promise.resolve(null); }
+          return r.json();
+        }).then(function(data){
+          if (!map) return;
+          const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
+          if (!rows) return;
+          const features = rows.filter(r=>r.geometry && (r.geometry.type==='Polygon'||r.geometry.type==='MultiPolygon')).map(r=>({
+            type:'Feature',
+            properties: { name: r.name || 'Hudud', region_name: r.region_name, area_ha: r.area_ha },
+            geometry: typeof r.geometry==='string' ? JSON.parse(r.geometry) : r.geometry
+          }));
+          if (features.length===0) return;
+          if (savedForestAreasLayer) { map.removeLayer(savedForestAreasLayer); savedForestAreasLayer = null; }
+          savedForestAreasLayer = L.geoJSON({ type:'FeatureCollection', features }, {
+            style: { color: '#166534', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 },
+            onEachFeature: function(f,l){ l.bindPopup('<div class="popup-title">' + (f.properties?.name || 'Hudud') + '</div><div>Viloyat: ' + (f.properties?.region_name || '—') + '</div><div>Maydon: ' + (f.properties?.area_ha != null ? Number(f.properties.area_ha).toLocaleString('uz') : '—') + ' ga</div>'); }
+          });
+          if (typeof state !== 'undefined' && state.forestLandsVisible && !map.hasLayer(savedForestAreasLayer)) map.addLayer(savedForestAreasLayer);
+          else if (typeof state === 'undefined' && !map.hasLayer(savedForestAreasLayer)) map.addLayer(savedForestAreasLayer);
+          if (savedForestAreasLayer && typeof savedForestAreasLayer.bringToFront === 'function') savedForestAreasLayer.bringToFront();
+          if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+          if (typeof refreshDemosForForest === 'function') refreshDemosForForest();
+        }).catch(function(err){ console.warn('[Smart Forest] O\'rmon yerlari yuklanmadi:', err); });
+        function refreshSavedForestAreasLayer(){
+          const url = (typeof window.SMART_FOREST_BACKEND === 'string' && window.SMART_FOREST_BACKEND ? window.SMART_FOREST_BACKEND : '') + '/api/v1/forest-areas';
+          fetch(url).then(function(r){
+            if (!r.ok) return Promise.resolve(null);
+            return r.json();
+          }).then(function(data){
+            if (!map) return;
+            const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
+            if (!rows) return;
+            const features = rows.filter(r=>r.geometry && (r.geometry.type==='Polygon'||r.geometry.type==='MultiPolygon')).map(r=>({
+              type:'Feature',
+              properties: { name: r.name || 'Hudud', region_name: r.region_name, area_ha: r.area_ha },
+              geometry: typeof r.geometry==='string' ? JSON.parse(r.geometry) : r.geometry
+            }));
+            const wasVisible = savedForestAreasLayer && map.hasLayer(savedForestAreasLayer);
+            if (savedForestAreasLayer) { map.removeLayer(savedForestAreasLayer); savedForestAreasLayer = null; }
+            if (features.length===0) return;
+            savedForestAreasLayer = L.geoJSON({ type:'FeatureCollection', features }, {
+              style: { color: '#166534', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 },
+              onEachFeature: function(f,l){ l.bindPopup('<div class="popup-title">' + (f.properties?.name || 'Hudud') + '</div><div>Viloyat: ' + (f.properties?.region_name || '—') + '</div><div>Maydon: ' + (f.properties?.area_ha != null ? Number(f.properties.area_ha).toLocaleString('uz') : '—') + ' ga</div>'); }
+            });
+            if (wasVisible || (typeof state !== 'undefined' && state.forestLandsVisible)) { map.addLayer(savedForestAreasLayer); if (typeof savedForestAreasLayer.bringToFront === 'function') savedForestAreasLayer.bringToFront(); }
+            if (window.__applyForestLandsFromPanel) window.__applyForestLandsFromPanel();
+            if (typeof refreshDemosForForest === 'function') refreshDemosForForest();
+          }).catch(function(){});
+        }
+        setInterval(refreshSavedForestAreasLayer, 30000);
       }).catch(()=>{});
     }
     const savedMapMode = safeStorage.getItem('smart-forest-map-mode') || 'national';
     const validMode = ['national','command','intel'].includes(savedMapMode) ? savedMapMode : 'national';
     const INTENSITY = { low: 0.2, medium: 0.5, high: 0.8, critical: 1 };
     const RISK_GRADIENT = { 0: 'rgba(90,107,93,0.25)', 0.35: 'rgba(139,115,85,0.4)', 0.55: 'rgba(166,93,58,0.5)', 0.75: 'rgba(139,74,69,0.6)', 1: 'rgba(100,50,48,0.75)' };
-    const MARKER_LIMIT = 300;
+    const MARKER_LIMIT = 50;
     function getEventsForMarkers(events){
       const prio = e=> ((s)=>(s==='critical'?4:s==='high'?3:s==='medium'?2:1))((e.severity||'').toLowerCase());
       const sorted = [...events].sort((a,b)=> (prio(b)-prio(a)) || (new Date(b.createdAt||0) - new Date(a.createdAt||0)));
@@ -1472,15 +1581,15 @@
     let cameraClusterLayer = null;
     let showCamerasLayer = safeStorage.getItem('smart-forest-cameras') === 'true';
     const CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="4"/><line x1="2" y1="10" x2="2" y2="14"/><line x1="22" y1="10" x2="22" y2="14"/></svg>';
-    function generateLiveCameras(){
-      if (!regionsGeoJson?.features?.length) return [];
+    function generateLiveCameras(forestFeatures){
+      if (!forestFeatures || !forestFeatures.length) return [];
       const cams = []; const b = UZB_BOUNDS; const names = ['North','South','East','West','Central','Alpha','Bravo','Site','Outpost','Tower','Grid','Sector','Unit'];
       let attempts = 0;
       while (cams.length < 55 && attempts < 500) {
         attempts++;
         const lat = b.getSouth() + Math.random()*(b.getNorth()-b.getSouth());
         const lng = b.getWest() + Math.random()*(b.getEast()-b.getWest());
-        if (!regionsGeoJson.features.some(f=> pointInFeature([lng,lat],f))) continue;
+        if (!forestFeatures.some(function(f){ return pointInFeature([lng,lat], f); })) continue;
         const region = getRegionForPoint(lng, lat) || 'Uzbekistan';
         const nameIdx = cams.length % names.length;
         const suffix = Math.floor(cams.length / names.length) + 1;
@@ -1511,6 +1620,24 @@
       });
       return m;
     }
+    function createMapCameraMarker(cam){
+      var normalized = { id: cam.id, name: cam.name, latitude: cam.lat, longitude: cam.lng, streamUrl: cam.stream, status: 'online' };
+      var div = document.createElement('div');
+      div.className = 'live-cam-marker';
+      div.innerHTML = CAM_SVG;
+      var icon = L.divIcon({ html: div, className: '', iconSize: [26,26], iconAnchor: [13,13] });
+      var m = L.marker([cam.lat, cam.lng], { icon: icon });
+      m._camera = normalized;
+      var popupContent = document.createElement('div');
+      popupContent.className = 'cam-popup-card';
+      popupContent.innerHTML = '<div class="cam-name">\uD83D\uDCF9 ' + escapeHtml(cam.name) + '</div><div class="cam-status online">\uD83D\uDFE2 Jonli oqim</div><div class="cam-preview">Kamerani bosib jonli oqimni oching</div>';
+      m.bindPopup(popupContent, { maxWidth: 300, className: 'cam-popup', autoPan: true });
+      m.on('click', function(){
+        map.flyTo([cam.lat, cam.lng], 13, { duration: 0.8, easeLinearity: 0.2 });
+        openCameraPanel(normalized);
+      });
+      return m;
+    }
     function buildCameraClusterLayer(){
       const layer = L.markerClusterGroup({
         maxClusterRadius: 80,
@@ -1536,7 +1663,50 @@
         }
       });
       liveCamerasData.forEach(cam=> layer.addLayer(createLiveCameraMarker(cam)));
+      MAP_CAMERAS.forEach(function(c){ layer.addLayer(createMapCameraMarker(c)); });
+      var savedCameras = [];
+      try {
+        var raw = localStorage.getItem('smart-forest-saved-cameras');
+        if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr)) savedCameras = arr; }
+      } catch(e) {}
+      savedCameras.forEach(function(c){
+        var lat = Number(c.latitude), lng = Number(c.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) layer.addLayer(createMapCameraMarker({ id: c.id, name: c.name || 'Kamera', lat: lat, lng: lng, stream: c.streamUrl || '/streams/cam1.m3u8' }));
+      });
       return layer;
+    }
+    function refreshDemosForForest(){
+      const forestFeatures = getForestPolygonFeatures();
+      const badge = document.getElementById('badge');
+      const ac = document.body.classList.contains('dark') ? '#6b9a75' : '#166534';
+      if (!forestFeatures.length) {
+        syncMarkersToEvents([]);
+        cameraLayer.clearLayers();
+        liveCamerasData = [];
+        if (cameraClusterLayer) { if (map.hasLayer(cameraClusterLayer)) map.removeLayer(cameraClusterLayer); cameraClusterLayer = null; }
+        document.getElementById('map')?.classList.remove('cameras-active');
+        if (badge) { badge.classList.remove('loading'); badge.innerHTML = `Hodisalar: <b>0</b> <span style="font-size:11px;color:${ac}">(o'rmon yerlari yo'q)</span>`; }
+        updateCommandBar();
+        return;
+      }
+      const baseEvents = typeof allEvents !== 'undefined' ? allEvents : [];
+      let forestFiltered = baseEvents.filter(function(e){ return pointInForest(e.longitude, e.latitude); });
+      const toSync = filteredRegionFeature ? forestFiltered.filter(function(e){ return pointInFeature([e.longitude, e.latitude], filteredRegionFeature); }) : forestFiltered;
+      syncMarkersToEvents(toSync);
+      if (typeof heatLayer !== 'undefined' && map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(toSync));
+      cameraLayer.clearLayers();
+      CAMERAS.forEach(function(c){ createCameraMarker(c); });
+      liveCamerasData = generateLiveCameras(forestFeatures);
+      if (cameraClusterLayer) { if (map.hasLayer(cameraClusterLayer)) map.removeLayer(cameraClusterLayer); cameraClusterLayer = null; }
+      if (showCamerasLayer) {
+        cameraClusterLayer = buildCameraClusterLayer();
+        map.addLayer(cameraClusterLayer);
+        if (map.hasLayer(markerLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
+        document.getElementById('map')?.classList.add('cameras-active');
+      } else {
+        document.getElementById('map')?.classList.remove('cameras-active');
+      }
+      updateCommandBar();
     }
     function focusCameraWithPopup(cam){
       const markers = cameraClusterLayer?.getAllChildMarkers?.() ?? cameraClusterLayer?.getLayers?.() ?? [];
@@ -1556,6 +1726,10 @@
       { id: 'cam-4', latitude: 39.77, longitude: 64.42, label: 'Bukhara West', streamUrl: CAMERA_STREAM_URL },
       { id: 'cam-5', latitude: 41.55, longitude: 60.62, label: 'Karakalpakstan', streamUrl: CAMERA_STREAM_URL },
       { id: 'cam-6', latitude: 37.22, longitude: 67.28, label: 'Surxondaryo South', streamUrl: CAMERA_STREAM_URL },
+    ];
+    /** Config-driven cameras (HLS streams). Add more: { id, name, lat, lng, stream }. */
+    const MAP_CAMERAS = [
+      { id: 'cam1', name: 'Office Camera', lat: 41.31, lng: 69.28, stream: '/streams/cam1.m3u8' },
     ];
     const cameraLayer = L.layerGroup().addTo(map);
     let cameraPanel = null;
@@ -1716,9 +1890,63 @@
       const b = UZB_BOUNDS;
       return { lat: b.getSouth() + Math.random()*(b.getNorth()-b.getSouth()), lng: b.getWest() + Math.random()*(b.getEast()-b.getWest()) };
     }
+    /** 50 ta demo sensorni nuqtalari — faqat o'rmon konturlari ichida. Demo hodisalar shu nuqtalarda. */
+    var SENSOR_POINTS_CACHE = null;
+    var SENSOR_POINTS_CACHE_KEY = null;
+    var DEMO_SENSOR_COUNT = 50;
+    function seededRandom(seed){ return function(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }; }
+    function getSensorPoints(){
+      var forestFeatures = getForestPolygonFeatures();
+      if (SENSOR_POINTS_CACHE && SENSOR_POINTS_CACHE.length > 0 && SENSOR_POINTS_CACHE_KEY === forestFeatures.length) return SENSOR_POINTS_CACHE;
+      if (!forestFeatures.length || typeof turf === 'undefined') return [];
+      var out = [], rng = seededRandom(4242), seen = {};
+      for (var i = 0; i < 500 && out.length < DEMO_SENSOR_COUNT; i++) {
+        var f = forestFeatures[i % forestFeatures.length];
+        try {
+          var bbox = turf.bbox(turf.feature(f.geometry));
+          var lng = bbox[0] + rng() * (bbox[2] - bbox[0]);
+          var lat = bbox[1] + rng() * (bbox[3] - bbox[1]);
+          if (!pointInFeature([lng, lat], f)) continue;
+          var key = lat.toFixed(4) + ',' + lng.toFixed(4);
+          if (seen[key]) continue;
+          seen[key] = true;
+          out.push({ lat: lat, lng: lng });
+        } catch (_) { }
+      }
+      SENSOR_POINTS_CACHE_KEY = forestFeatures.length;
+      SENSOR_POINTS_CACHE = out;
+      return out;
+    }
+    function isEventAtSensorPoint(e){
+      var pts = getSensorPoints();
+      if (!pts.length) return true;
+      return pts.some(function(p){ return Math.abs(p.lat - e.latitude) < 0.002 && Math.abs(p.lng - e.longitude) < 0.002; });
+    }
+    /** O'rmon konturlari ichida tasodifiy nuqta (risk qatlami spike uchun). */
+    function randomPointInForest(regionFilter){
+      const forestFeatures = getForestPolygonFeatures();
+      if (!forestFeatures.length || typeof turf === 'undefined') return null;
+      for (let attempt = 0; attempt < 80; attempt++) {
+        const f = forestFeatures[Math.floor(Math.random() * forestFeatures.length)];
+        try {
+          const bbox = turf.bbox(turf.feature(f.geometry));
+          const lng = bbox[0] + Math.random() * (bbox[2] - bbox[0]);
+          const lat = bbox[1] + Math.random() * (bbox[3] - bbox[1]);
+          if (!pointInFeature([lng, lat], f)) continue;
+          if (regionFilter && !pointInFeature([lng, lat], regionFilter)) continue;
+          return { lat, lng };
+        } catch (_) { }
+      }
+      return null;
+    }
     const DEMO_TITLES = ['Forest fire','Smoke detected','Illegal logging','Tree disease detected','Ranger alert'];
+    /** Demo hodisa faqat o'rmon konturlari ichidagi 50 ta sensorni nuqtalarida. */
     function createDemoEvent(){
-      const pt = randomPointInUzb();
+      var pts = getSensorPoints();
+      if (!pts.length) return null;
+      var filtered = filteredRegionFeature ? pts.filter(function(p){ return pointInFeature([p.lng, p.lat], filteredRegionFeature); }) : pts;
+      if (!filtered.length) return null;
+      var pt = filtered[Math.floor(Math.random() * filtered.length)];
       return { id: 'demo-'+Date.now(), title: DEMO_TITLES[Math.floor(Math.random()*DEMO_TITLES.length)], latitude: pt.lat, longitude: pt.lng, severity: 'critical', createdAt: new Date().toISOString() };
     }
     let demoIntervalId = null;
@@ -1730,9 +1958,19 @@
     }
     function runDemoStep(){
       if (!demoMode) return;
-      const events = filteredRegionFeature ? allEvents.filter(e=> pointInFeature([e.longitude,e.latitude], filteredRegionFeature)) : allEvents;
+      const forestFeatures = getForestPolygonFeatures();
+      if (!forestFeatures.length) return;
+      const baseEvents = (typeof allEvents !== 'undefined' ? allEvents.filter(function(e){ return pointInForest(e.longitude, e.latitude); }) : []);
+      const events = filteredRegionFeature ? baseEvents.filter(function(e){ return pointInFeature([e.longitude, e.latitude], filteredRegionFeature); }) : baseEvents;
       const candidate = events.length ? events[Math.floor(Math.random()*Math.min(events.length, 50))] : null;
       const e = candidate || createDemoEvent();
+      if (!e) return;
+      if (!candidate) {
+        if (typeof allEvents !== 'undefined') { allEvents.unshift(e); if (allEvents.length > MARKER_LIMIT) allEvents = allEvents.slice(0, MARKER_LIMIT); }
+        const base = (typeof allEvents !== 'undefined' ? allEvents.filter(function(x){ return pointInForest(x.longitude, x.latitude); }) : []);
+        const toShow = filteredRegionFeature ? base.filter(function(x){ return pointInFeature([x.longitude, x.latitude], filteredRegionFeature); }) : base;
+        syncMarkersToEvents(toShow);
+      }
       playCriticalAlert();
       showCriticalAlert(e);
       map.flyTo([e.latitude, e.longitude], 10 + Math.random()*2, { duration: 1.5, easeLinearity: 0.2 });
@@ -1750,11 +1988,12 @@
       const medium = events.filter(e=>(e.severity||'').toLowerCase()==='medium');
       let maxRaw = 0;
       const rawPts = [];
+      const forestFeatures = getForestPolygonFeatures();
       for (let i=0;i<rows;i++){
         for (let j=0;j<cols;j++){
           const lat = b.getSouth() + (b.getNorth()-b.getSouth())*(i+0.5)/rows;
           const lng = b.getWest() + (b.getEast()-b.getWest())*(j+0.5)/cols;
-          if (!regionsGeoJson?.features?.some(f=>pointInFeature([lng,lat],f))) continue;
+          if (!forestFeatures.length || !pointInForest(lng, lat)) continue;
           const nearby = events.filter(e=> Math.hypot(e.latitude-lat,(e.longitude-lng)*0.8) < 1.5);
           const nCritical = nearby.filter(e=>(e.severity||'').toLowerCase()==='critical').length;
           const nHigh = nearby.filter(e=>(e.severity||'').toLowerCase()==='high').length;
@@ -1781,15 +2020,16 @@
       const now = Date.now();
       if (now - riskLastUpdate < riskUpdateInterval) return;
       riskLastUpdate = now;
-      const events = filteredRegionFeature ? allEvents.filter(e=> pointInFeature([e.longitude,e.latitude], filteredRegionFeature)) : allEvents;
+      const forestFeatures = getForestPolygonFeatures();
+      const baseEvents = forestFeatures.length ? (typeof allEvents !== 'undefined' ? allEvents.filter(function(e){ return pointInForest(e.longitude, e.latitude); }) : []) : [];
+      const events = filteredRegionFeature ? baseEvents.filter(function(e){ return pointInFeature([e.longitude, e.latitude], filteredRegionFeature); }) : baseEvents;
       const {pts} = computeRiskPoints(events);
       let finalPts = pts;
       if (demoMode) {
         const spikes = [];
         for (let i = 0; i < 3; i++) {
-          const pt = randomPointInUzb();
-          const intensity = 0.6 + Math.random()*0.4;
-          spikes.push([pt.lat, pt.lng, intensity]);
+          const pt = randomPointInForest();
+          if (pt) { const intensity = 0.6 + Math.random()*0.4; spikes.push([pt.lat, pt.lng, intensity]); }
         }
         finalPts = [...pts, ...spikes];
       }
@@ -1798,7 +2038,7 @@
     function formatTime(d){ return d ? new Date(d).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}) : '—'; }
 
     function createCameraMarker(cam){
-      if (!regionsGeoJson?.features?.some(f=> pointInFeature([cam.longitude, cam.latitude], f))) return null;
+      if (typeof pointInForest !== 'function' || !pointInForest(cam.longitude, cam.latitude)) return null;
       const dot = document.createElement('div');
       dot.className = 'camera-marker';
       dot.innerHTML = CAM_SVG;
@@ -1811,54 +2051,56 @@
     }
     function stopCameraPanelFeed(panel){
       if (!panel) return;
+      if (panel.liveSyncInterval != null) { clearInterval(panel.liveSyncInterval); panel.liveSyncInterval = null; }
       if (panel.tsInterval != null) { clearInterval(panel.tsInterval); panel.tsInterval = null; }
+      if (panel.hls) { try { panel.hls.destroy(); } catch(e) {} panel.hls = null; }
       if (panel.video) { panel.video.pause(); panel.video.src = ''; panel.video.load(); }
     }
     function openCameraPanel(cam){
+      if (!cam) return;
+      cam = { name: cam.name || cam.label || 'Kamera', latitude: cam.latitude != null ? cam.latitude : cam.lat, longitude: cam.longitude != null ? cam.longitude : cam.lng, id: cam.id, label: cam.label, status: cam.status, streamUrl: cam.streamUrl, stream: cam.stream };
       const container = document.getElementById('camera-panel-container');
-      let backdrop, el;
       if (cameraPanel) {
         stopCameraPanelFeed(cameraPanel);
-        backdrop = cameraPanel.backdrop;
-        el = cameraPanel.el;
-        el.classList.remove('Closing');
-      } else {
-        backdrop = document.createElement('div');
-        backdrop.className = 'camera-modal-backdrop';
-        el = document.createElement('div');
-        el.className = 'camera-panel';
-        el.innerHTML = `
-          <div class="camera-panel-header">
-            <span class="camera-panel-title"></span>
-            <button type="button" class="camera-panel-close" aria-label="Yopish">×</button>
-          </div>
-          <div class="camera-panel-video-wrap">
-            <div class="camera-panel-loader">
-              <div class="camera-panel-spinner"></div>
-              <span>Oqim yuklanmoqda...</span>
-            </div>
-            <div class="camera-panel-offline hidden">Kamera offlayn</div>
-            <div class="camera-panel-live hidden"><span class="camera-panel-live-dot"></span>LIVE</div>
-            <div class="camera-panel-timestamp">—</div>
-            <div class="camera-panel-region"></div>
-            <video muted playsinline loop preload="none"></video>
-          </div>
-          <div class="camera-panel-footer">KUZATUV OQIMI · OVOZ YO'Q</div>
-        `;
-        container.appendChild(backdrop);
-        container.appendChild(el);
-        backdrop.onclick = ()=> closeCameraPanel();
-        el.onclick = (e)=> e.stopPropagation();
-        el.querySelector('.camera-panel-close').onclick = (e)=>{ e.stopPropagation(); closeCameraPanel(); };
+        setCameraMarkerActive(cameraPanel.cam, false);
+        if (cameraPanel.el && cameraPanel.el.parentNode) cameraPanel.el.parentNode.removeChild(cameraPanel.el);
+        if (cameraPanel.backdrop && cameraPanel.backdrop.parentNode) cameraPanel.backdrop.parentNode.removeChild(cameraPanel.backdrop);
+        cameraPanel = null;
       }
+      const backdrop = document.createElement('div');
+      backdrop.className = 'camera-modal-backdrop';
+      const el = document.createElement('div');
+      el.className = 'camera-panel';
+      el.innerHTML = `
+        <div class="camera-panel-header">
+          <span class="camera-panel-title"></span>
+          <button type="button" class="camera-panel-close" aria-label="Yopish">×</button>
+        </div>
+        <div class="camera-panel-video-wrap">
+          <div class="camera-panel-loader">
+            <div class="camera-panel-spinner"></div>
+            <span>Oqim yuklanmoqda...</span>
+          </div>
+          <div class="camera-panel-offline hidden">Kamera offlayn</div>
+          <div class="camera-panel-live hidden"><span class="camera-panel-live-dot"></span>LIVE</div>
+          <div class="camera-panel-timestamp">—</div>
+          <div class="camera-panel-region"></div>
+          <video muted playsinline loop preload="none"></video>
+        </div>
+        <div class="camera-panel-footer">KUZATUV OQIMI · OVOZ YO'Q</div>
+      `;
+      container.appendChild(backdrop);
+      container.appendChild(el);
+      backdrop.onclick = ()=> closeCameraPanel();
+      el.onclick = (e)=> e.stopPropagation();
+      el.querySelector('.camera-panel-close').onclick = (e)=>{ e.stopPropagation(); closeCameraPanel(); };
 
       const camName = cam.name || cam.label || 'Camera';
-      const camStatus = (cam.status || 'unknown').toLowerCase();
-      const streamUrl = cam.streamUrl || null;
-      const isOffline = !streamUrl || camStatus === 'offline';
+      var baseStreamUrl = (window.location.origin ? window.location.origin + '/streams/cam1.m3u8' : '/streams/cam1.m3u8');
+      var streamUrl = baseStreamUrl + (baseStreamUrl.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
       const regionName = getRegionForPoint(cam.longitude, cam.latitude) || cam.label || cam.name || '';
 
-      el.querySelector('.camera-panel-title').textContent = `${camName} — ${camStatus === 'online' ? '🟢 Onlayn' : '🔴 Offlayn'}`;
+      el.querySelector('.camera-panel-title').textContent = camName + ' — \uD83D\uDFE2 Onlayn';
       el.querySelector('.camera-panel-region').textContent = regionName;
 
       const video = el.querySelector('video');
@@ -1874,37 +2116,76 @@
       tsEl.classList.remove('live-active');
       regionEl.classList.remove('live-active');
       video.style.display = '';
+      video.src = '';
+      video.load();
 
-      let tsInterval = null;
-      if (isOffline) {
-        loader.classList.add('hidden');
-        offlineEl.classList.remove('hidden');
-        video.style.display = 'none';
-      } else {
-        video.onloadeddata = ()=>{
+      const panel = { el, cam, video, tsInterval: null, backdrop, hls: null };
+      cameraPanel = panel;
+      container.classList.add('visible');
+      setCameraMarkerActive(cam, true);
+
+      function updateTs(){ if (tsEl) tsEl.textContent = new Date().toLocaleTimeString(undefined,{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+      function startStream(){
+        video.onloadeddata = function(){
           loader.classList.add('hidden');
           liveEl.classList.remove('hidden');
           tsEl.classList.add('live-active');
           regionEl.classList.add('live-active');
-          video.play().catch(()=>{});
+          video.play().catch(function(){});
         };
-        video.onerror = ()=> {
+        function showStreamError(msg){
+            loader.classList.add('hidden');
+            offlineEl.classList.remove('hidden');
+            offlineEl.textContent = msg || 'Oqim yuklanmadi';
+            video.style.display = 'none';
+          }
+          video.onerror = function(){
+            showStreamError('Oqim yuklanmadi');
+          };
+        if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
+          var hls = new window.Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            liveSyncDuration: 1,
+            liveMaxLatencyDuration: 2,
+            liveBackBufferLength: 0,
+            startPosition: -1,
+            xhrSetup: function(xhr){ try { xhr.setRequestHeader('Cache-Control', 'no-cache'); xhr.setRequestHeader('Pragma', 'no-cache'); } catch(e){} }
+          });
+          function seekToLiveEdge(){
+            if (!video.buffered || video.buffered.length === 0) return;
+            var end = video.buffered.end(video.buffered.length - 1);
+            if (end > video.currentTime + 1.5) video.currentTime = end - 0.2;
+          }
+          hls.loadSource(streamUrl);
+          hls.attachMedia(video);
+          video.addEventListener('loadeddata', function onFirstData(){ video.removeEventListener('loadeddata', onFirstData); seekToLiveEdge(); });
+          video.addEventListener('playing', function onFirstPlay(){ video.removeEventListener('playing', onFirstPlay); seekToLiveEdge(); });
+          hls.on(window.Hls.Events.MANIFEST_PARSED, function(){ hls.startLoad(-1); });
+          hls.on(window.Hls.Events.LEVEL_LOADED, function(ev, data){ if (data.details.live) { hls.startLoad(-1); seekToLiveEdge(); } });
+          hls.on(window.Hls.Events.ERROR, function(ev, data){
+            if (data.fatal) {
+              showStreamError('Jonli oqim yo\u2018q. Kamera uchun terminalda: npm run camera:cam1');
+            }
+          });
+          hls.startLoad(-1);
+          panel.hls = hls;
+          panel.liveSyncInterval = setInterval(seekToLiveEdge, 2000);
+        } else if (video.canPlayType && video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = streamUrl;
+          video.load();
+        } else {
           loader.classList.add('hidden');
           offlineEl.classList.remove('hidden');
-          offlineEl.textContent = 'Kamera offlayn';
+          offlineEl.textContent = 'HLS qo\u2018llab-quvvatlanmaydi';
           video.style.display = 'none';
-        };
-        video.src = streamUrl;
-        video.load();
-        function updateTs(){ tsEl.textContent = new Date().toLocaleTimeString(undefined,{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+        }
+        if (!panel.hls) video.load();
         updateTs();
-        tsInterval = setInterval(updateTs, 1000);
+        panel.tsInterval = setInterval(updateTs, 1000);
       }
+      setTimeout(startStream, 50);
 
-      const panel = { el, cam, video, tsInterval, backdrop };
-      cameraPanel = panel;
-      container.classList.add('visible');
-      setCameraMarkerActive(cam, true);
       return panel;
     }
     function setCameraMarkerActive(cam, active){
@@ -2003,13 +2284,15 @@
     function pushEvent(e){
       if (renderedIds.has(e.id)) return;
       allEvents.unshift(e);
-      const displayEvents = filteredRegionFeature ? allEvents.filter(x=> pointInFeature([x.longitude, x.latitude], filteredRegionFeature)) : allEvents;
+      if (allEvents.length > MARKER_LIMIT) allEvents = allEvents.slice(0, MARKER_LIMIT);
+      const forestFeatures = getForestPolygonFeatures();
+      const baseEvents = forestFeatures.length ? allEvents.filter(function(x){ return pointInForest(x.longitude, x.latitude); }) : [];
+      const displayEvents = filteredRegionFeature ? baseEvents.filter(function(x){ return pointInFeature([x.longitude, x.latitude], filteredRegionFeature); }) : baseEvents;
       syncMarkersToEvents(displayEvents);
-      const markersVisible = map.hasLayer(markerLayer);
-      const isCritical = (e.severity||'').toLowerCase() === 'critical';
-      const isFire = (e.title||'').toLowerCase().includes('fire');
-      if (markersVisible) {
-        map.flyTo([e.latitude, e.longitude], 11, { duration: 1, easeLinearity: 0.2 });
+      var lat = e.latitude != null ? Number(e.latitude) : NaN;
+      var lng = e.longitude != null ? Number(e.longitude) : NaN;
+      if (!isNaN(lat) && !isNaN(lng) && map.hasLayer(markerLayer)) {
+        map.flyTo([lat, lng], 11, { duration: 1, easeLinearity: 0.2 });
         const markers = markerLayer.getAllChildMarkers?.() ?? [];
         const m = markers.find(l=> l._event?.id === e.id);
         if (m) {
@@ -2021,13 +2304,18 @@
           }
           map.once('moveend', ()=> { if (m && map.hasLayer(markerLayer)) m.openPopup(); });
         }
-        if (isCritical) highlightRegionForIncident(e.longitude, e.latitude);
       }
-      if (isCritical) {
-        playCriticalAlert();
-        showCriticalAlert(e);
-      } else if (isFire) {
-        showFireEventAlert(e);
+      var eventInForest = forestFeatures.length && pointInForest(e.longitude, e.latitude);
+      if (eventInForest) {
+        const isCritical = (e.severity||'').toLowerCase() === 'critical';
+        const isFire = (e.title||'').toLowerCase().includes('fire');
+        if (isCritical) highlightRegionForIncident(e.longitude, e.latitude);
+        if (isCritical) {
+          playCriticalAlert();
+          showCriticalAlert(e);
+        } else if (isFire) {
+          showFireEventAlert(e);
+        }
       }
       if (map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(displayEvents));
       { const ac=document.body.classList.contains('dark')?'#6b9a75':'#166534'; document.getElementById('badge').innerHTML = `Hodisalar: <b>${displayEvents.length}</b>${filteredRegionFeature ? ` <span style="font-size:11px;color:${ac}">(filtrlangan)</span>` : ` <span style="font-size:11px;color:${ac}">● Jonli</span>`}`; }
@@ -2041,19 +2329,20 @@
     }
 
     function loadInitial(){
-      fetchJsonWithRetry('/api/v1/events').then(events=>{
+      fetchJsonWithRetry((typeof window.SMART_FOREST_BACKEND === 'string' && window.SMART_FOREST_BACKEND ? window.SMART_FOREST_BACKEND : '') + '/api/v1/events').then(events=>{
         hideReconnecting();
         eventsLoaded = true;
         tryHideMapSkeleton();
-        allEvents = events;
+        allEvents = (Array.isArray(events) ? events : []).slice(0, MARKER_LIMIT);
         const badge = document.getElementById('badge');
         badge.classList.remove('loading');
-        if (filteredRegionFeature) {
-          applyRegionFilter();
-        } else {
-          syncMarkersToEvents(events);
-          if (map.hasLayer(heatLayer)) heatLayer.setLatLngs(eventsToHeatPoints(events));
-          { const ac=document.body.classList.contains('dark')?'#6b9a75':'#166534'; badge.innerHTML = `Hodisalar: <b>${events.length}</b>${events.length > MARKER_LIMIT ? ` <span style="font-size:10px;color:${ac}">(${MARKER_LIMIT} ko'rsatilmoqda)</span>` : ''} <span style="font-size:11px;color:${ac}">● Jonli</span>`; }
+        refreshDemosForForest();
+        if (typeof markerLayer !== 'undefined' && markerLayer && markerLayer.getBounds && markerLayer.getLayers && markerLayer.getLayers().length > 0) {
+          const b = markerLayer.getBounds();
+          if (b && b.isValid()) map.fitBounds(b, { padding: [24, 24], animate: true, duration: 0.8 });
+        } else if (typeof forestContourLayer !== 'undefined' && forestContourLayer && forestContourLayer.getBounds && forestContourLayer.getLayers && forestContourLayer.getLayers().length > 0) {
+          const fb = forestContourLayer.getBounds();
+          if (fb && fb.isValid()) map.fitBounds(fb, { padding: [24, 24], animate: true, duration: 0.8 });
         }
         lastEventTime = events[0]?.createdAt ? new Date(events[0].createdAt).getTime() : null;
         updateCommandBar();
@@ -2072,7 +2361,9 @@
       return a;
     }
     function buildTourStops(){
-      const events = typeof allEvents !== 'undefined' ? allEvents : [];
+      const forestFeatures = getForestPolygonFeatures();
+      const baseEvents = typeof allEvents !== 'undefined' ? allEvents : [];
+      const events = forestFeatures.length ? baseEvents.filter(function(e){ return pointInForest(e.longitude, e.latitude); }) : [];
       const critical = events.filter(e=>(e.severity||'').toLowerCase()==='critical').map(e=>({...e,priority:4}));
       const high = events.filter(e=>(e.severity||'').toLowerCase()==='high').map(e=>({...e,priority:3}));
       const medium = events.filter(e=>(e.severity||'').toLowerCase()==='medium').map(e=>({...e,priority:2}));
@@ -2278,8 +2569,9 @@
         camerasToggle.classList.toggle('active', showCamerasLayer);
         const mapEl = document.getElementById('map');
         if (showCamerasLayer) {
+          const forestFeatures = getForestPolygonFeatures();
+          if (liveCamerasData.length === 0) liveCamerasData = generateLiveCameras(forestFeatures);
           mapEl?.classList.add('cameras-active');
-          if (liveCamerasData.length === 0) liveCamerasData = generateLiveCameras();
           if (cameraClusterLayer) map.removeLayer(cameraClusterLayer);
           cameraClusterLayer = buildCameraClusterLayer();
           map.addLayer(cameraClusterLayer);
@@ -2321,7 +2613,7 @@
         aiRisk: showRiskLayer,
         cameras: showCamerasLayer,
         boundary: true,
-        forestLandsVisible: false,
+        forestLandsVisible: true,
         forestLandsExpanded: false,
         leaseAreas: false,
         availableLands: false,
@@ -2334,7 +2626,7 @@
           if (s) {
             const parsed = JSON.parse(s);
             const st = { ...defaultState, ...parsed };
-            st.forestLandsVisible = !!parsed.forestLandsVisible;
+            st.forestLandsVisible = parsed.hasOwnProperty('forestLandsVisible') ? !!parsed.forestLandsVisible : defaultState.forestLandsVisible;
             if (parsed.forestLandsExpanded !== undefined) st.forestLandsExpanded = !!parsed.forestLandsExpanded;
             delete st.forestLands;
             return st;
@@ -2360,7 +2652,9 @@
           if (map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
           if (!map.hasLayer(markerLayer)) map.addLayer(markerLayer);
           if (cameraClusterLayer && map.hasLayer(cameraClusterLayer)) { map.removeLayer(markerLayer); map.addLayer(markerLayer); }
-          const displayEvents = filteredRegionFeature ? allEvents.filter(x=> pointInFeature([x.longitude, x.latitude], filteredRegionFeature)) : allEvents;
+          const forestFeatures = getForestPolygonFeatures();
+          const baseEvents = forestFeatures.length ? (typeof allEvents !== 'undefined' ? allEvents.filter(function(x){ return pointInForest(x.longitude, x.latitude); }) : []) : [];
+          const displayEvents = filteredRegionFeature ? baseEvents.filter(function(x){ return pointInFeature([x.longitude, x.latitude], filteredRegionFeature); }) : baseEvents;
           syncMarkersToEvents(displayEvents);
         } else {
           map.removeLayer(markerLayer);
@@ -2387,8 +2681,9 @@
         safeStorage.setItem('smart-forest-cameras', on);
         const mapEl = document.getElementById('map');
         if (on) {
+          const forestFeatures = getForestPolygonFeatures();
+          if (liveCamerasData.length === 0) liveCamerasData = generateLiveCameras(forestFeatures);
           mapEl.classList.add('cameras-active');
-          if (liveCamerasData.length === 0) liveCamerasData = generateLiveCameras();
           if (cameraClusterLayer) map.removeLayer(cameraClusterLayer);
           cameraClusterLayer = buildCameraClusterLayer();
           map.addLayer(cameraClusterLayer);
@@ -2409,16 +2704,25 @@
       }
       function applyForestContour(visible){
         if (!forestContourLayer) return;
-        if (visible) { if (!map.hasLayer(forestContourLayer)) map.addLayer(forestContourLayer); forestContourLayer.bringToBack(); }
-        else { if (map.hasLayer(forestContourLayer)) map.removeLayer(forestContourLayer); }
+        if (visible) {
+          if (!map.hasLayer(forestContourLayer)) map.addLayer(forestContourLayer);
+          if (typeof forestContourLayer.bringToBack === 'function') forestContourLayer.bringToBack();
+        } else { if (map.hasLayer(forestContourLayer)) map.removeLayer(forestContourLayer); }
+      }
+      function applySavedForestAreas(visible){
+        if (!savedForestAreasLayer) return;
+        if (visible) {
+          if (!map.hasLayer(savedForestAreasLayer)) map.addLayer(savedForestAreasLayer);
+          if (typeof savedForestAreasLayer.bringToFront === 'function') savedForestAreasLayer.bringToFront();
+        } else { if (map.hasLayer(savedForestAreasLayer)) map.removeLayer(savedForestAreasLayer); }
       }
       function applyLeaseAreas(on){
         if (!leaseAreasLayer) return;
         const visible = state.forestLandsVisible && on;
         if (visible) { 
           if (!map.hasLayer(leaseAreasLayer)) map.addLayer(leaseAreasLayer); 
-          leaseAreasLayer.bringToFront(); 
-          leaseAreasLayer.eachLayer(l=> { if (l.bringToFront) l.bringToFront(); });
+          if (typeof leaseAreasLayer.bringToFront === 'function') leaseAreasLayer.bringToFront(); 
+          if (typeof leaseAreasLayer.eachLayer === 'function') leaseAreasLayer.eachLayer(l=> { if (l && typeof l.bringToFront === 'function') l.bringToFront(); });
         }
         else { if (map.hasLayer(leaseAreasLayer)) map.removeLayer(leaseAreasLayer); if (selectedLandLayer && selectedLandLayer._landType==='lease') applyLandSelection(null); }
       }
@@ -2427,13 +2731,14 @@
         const visible = state.forestLandsVisible && on;
         if (visible) { 
           if (!map.hasLayer(availableLandsLayer)) map.addLayer(availableLandsLayer); 
-          availableLandsLayer.bringToFront(); 
-          availableLandsLayer.eachLayer(l=> { if (l.bringToFront) l.bringToFront(); });
+          if (typeof availableLandsLayer.bringToFront === 'function') availableLandsLayer.bringToFront(); 
+          if (typeof availableLandsLayer.eachLayer === 'function') availableLandsLayer.eachLayer(l=> { if (l && typeof l.bringToFront === 'function') l.bringToFront(); });
         }
         else { if (map.hasLayer(availableLandsLayer)) map.removeLayer(availableLandsLayer); if (selectedLandLayer && selectedLandLayer._landType==='available') applyLandSelection(null); }
       }
       function applyForestLayers(){
         applyForestContour(state.forestLandsVisible);
+        applySavedForestAreas(state.forestLandsVisible);
         applyLeaseAreas(state.leaseAreas);
         applyAvailableLands(state.availableLands);
       }
@@ -2441,11 +2746,11 @@
       function applyBasemap(basemap){
         const tilePane = map.getContainer().querySelector('.leaflet-tile-pane');
         if (tilePane) { tilePane.style.transition = 'opacity .2s ease'; tilePane.style.opacity = '0.85'; }
-        [lightTiles, darkTiles, satelliteTiles, hybridLabelsTiles, topographicTiles].forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+        [lightTiles, darkTiles, satelliteTiles, hybridLabelsTiles, hybridStreetTiles, topographicTiles].forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
         if (basemap === 'satellite') {
           map.addLayer(satelliteTiles);
         } else if (basemap === 'hybrid') {
-          map.addLayer(satelliteTiles);
+          map.addLayer(hybridStreetTiles);
           map.addLayer(hybridLabelsTiles);
         } else {
           map.addLayer(topographicTiles);
@@ -2582,7 +2887,7 @@
 
     function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
-    const socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000, reconnectionDelayMax: 30000 });
+    const socket = io(typeof window.SMART_FOREST_BACKEND === 'string' && window.SMART_FOREST_BACKEND ? window.SMART_FOREST_BACKEND : '', { path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000, reconnectionDelayMax: 30000 });
     socket.on('event', pushEvent);
     socket.on('connect', ()=>{ hideReconnecting(); if (typeof loadInitial === 'function') loadInitial(); });
     socket.on('disconnect', ()=> showReconnecting());
@@ -2620,7 +2925,7 @@
         if (demoMode) {
           if (!showRiskLayer) { showRiskLayer = true; map.addLayer(riskLayer); document.getElementById('risk-legend')?.classList.add('visible'); document.getElementById('risk-toggle')?.classList.add('active'); }
           runDemoStep();
-          function scheduleDemo(){ demoIntervalId = setTimeout(()=>{ runDemoStep(); scheduleDemo(); }, 18000 + Math.random()*12000); }
+          function scheduleDemo(){ demoIntervalId = setTimeout(()=>{ runDemoStep(); scheduleDemo(); }, 10000); }
           scheduleDemo();
           function scheduleDemoCamera(){ demoCameraIntervalId = setTimeout(()=>{ runDemoCameraHighlight(); scheduleDemoCamera(); }, 20000 + Math.random()*20000); }
           scheduleDemoCamera();
@@ -2632,7 +2937,7 @@
       if (demoMode) {
         if (!showRiskLayer) { showRiskLayer = true; map.addLayer(riskLayer); document.getElementById('risk-legend')?.classList.add('visible'); document.getElementById('risk-toggle')?.classList.add('active'); }
         setTimeout(runDemoStep, 3000);
-        function scheduleDemo(){ demoIntervalId = setTimeout(()=>{ runDemoStep(); scheduleDemo(); }, 18000 + Math.random()*12000); }
+        function scheduleDemo(){ demoIntervalId = setTimeout(()=>{ runDemoStep(); scheduleDemo(); }, 10000); }
         scheduleDemo();
         function scheduleDemoCamera(){ demoCameraIntervalId = setTimeout(()=>{ runDemoCameraHighlight(); scheduleDemoCamera(); }, 20000 + Math.random()*20000); }
         scheduleDemoCamera();
@@ -2661,7 +2966,7 @@
       introEl.addEventListener('animationend', (e)=>{ if (e.animationName === 'introOverlay') introEl.remove(); });
     }
     map.whenReady(()=>{
-      map.flyToBounds(UZB_BOUNDS, { padding: [24, 24], duration: 3.6, easeLinearity: 0.2 });
+      map.flyToBounds(UZB_BOUNDS, { padding: [8, 8], duration: 2, easeLinearity: 0.2 });
       loadRegions();
       loadInitial();
       loadLandParcels();

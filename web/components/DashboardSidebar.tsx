@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import SidebarCollapsibleMenu, { type SidebarSubItem } from '@/components/SidebarCollapsibleMenu';
@@ -10,6 +11,7 @@ const menuItems = [
   { href: '/dashboard', label: 'Boshqaruv paneli', icon: DashboardIcon },
   { href: '/dashboard/map', label: 'Xarita', icon: MapIcon },
   { href: '/dashboard/forest/create', label: "O'rmon yerlari", icon: ForestLandsIcon, isGroup: true },
+  { href: '/dashboard/forest/enterprises', label: "O'rmon xo'jaliklari", icon: ForestEnterpriseIcon },
   { href: '/dashboard/monitoring', label: 'Monitoring', icon: MonitoringIcon },
   { href: '/dashboard/cameras', label: 'Kamerlar', icon: CameraIcon },
   { href: '/dashboard/analytics', label: 'Tahlil', icon: ChartIcon },
@@ -62,6 +64,13 @@ function FreeLandIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  );
+}
+function ForestEnterpriseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
     </svg>
   );
 }
@@ -150,10 +159,8 @@ export default function DashboardSidebar() {
       <div className="flex items-center justify-between h-[var(--topbar-height)] px-4 border-b border-slate-700/50 shrink-0">
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-forest-600 flex items-center justify-center shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
+            <div className="relative w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+              <Image src="/22.png" alt="Smart Forest" fill sizes="36px" className="!object-cover" />
             </div>
             <span className="font-semibold text-white truncate">Smart Forest</span>
           </Link>
@@ -216,15 +223,15 @@ export default function DashboardSidebar() {
           </button>
         </div>
       </nav>
-      <footer className="shrink-0 px-4 py-4 border-t border-slate-700/50 text-center">
+      <footer className="shrink-0 px-4 py-5 border-t border-slate-700/50 text-center">
         {!collapsed ? (
           <>
-            <a href="tel:+998915855533" className="flex items-center justify-center gap-1 text-white font-medium text-[10px] mb-1.5 hover:text-forest-400 transition">
-              <PhoneIcon className="w-3 h-3 text-forest-400 shrink-0" />
+            <a href="tel:+998915855533" className="flex items-center justify-center gap-2 text-white font-semibold text-sm mb-2 hover:text-forest-400 transition">
+              <PhoneIcon className="w-4 h-4 text-forest-400 shrink-0" />
               +998 91 585-55-33
             </a>
-            <p className="text-slate-500 text-[9px]">FORESTDIGITAL © 2026.</p>
-            <p className="text-slate-500 text-[9px] mt-0.5">Designed & Developed By Akbarali</p>
+            <p className="text-slate-500 text-xs">FORESTDIGITAL © 2026.</p>
+            <p className="text-slate-500 text-xs mt-1">Designed & Developed By Akbarali</p>
           </>
         ) : (
           <a href="tel:+998915855533" className="flex items-center justify-center text-forest-400 hover:text-forest-300 transition" aria-label="+998 91 585-55-33">

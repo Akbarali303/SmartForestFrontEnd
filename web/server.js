@@ -11,8 +11,8 @@ const httpProxy = require('http-proxy');
 const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
-const port = parseInt(process.env.PORT || '3002', 10);
-const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:3000';
+const port = parseInt(process.env.PORT || '9002', 10);
+const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:9000';
 
 const proxy = httpProxy.createProxyServer({ ws: true });
 
@@ -27,14 +27,28 @@ const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     const url = req.url || '';
     if (url.startsWith('/socket.io')) {
       proxy.web(req, res, { target: backendUrl });
       return;
     }
-    const parsedUrl = parse(req.url, true);
-    handle(req, res, parsedUrl);
+    // /api/v1 — backend API (saqlash va boshqa so'rovlar ishlashi uchun)
+    if (url.startsWith('/api/v1')) {
+      proxy.web(req, res, { target: backendUrl });
+      return;
+    }
+    try {
+      const parsedUrl = parse(req.url, true);
+      await handle(req, res, parsedUrl);
+    } catch (err) {
+      console.error('[Next]', req.url, err);
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end('Internal Server Error');
+      }
+    }
   });
 
   server.on('upgrade', (req, socket, head) => {
