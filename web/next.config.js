@@ -9,8 +9,8 @@ const leafletPath = path.join(webDir, 'node_modules', 'leaflet');
 
 const nextConfig = {
   reactStrictMode: true,
-  // Chunk URL hech qachon "undefined" bo‘lmasin (GET /_next/undefined 404 ni oldini olish)
-  assetPrefix: '',
+  // Asset'lar /_next/static/... dan yuklanadi. Subpath'da (mas. proxy) ishlatilsa basePath o‘rnating.
+  // assetPrefix: '' — default; faqat CDN bo‘lsa o‘zgartiring.
   webpack: (config, { isServer }) => {
     config.resolve = config.resolve || {};
     config.resolve.modules = [...(config.resolve.modules || []), path.join(webDir, 'node_modules')];

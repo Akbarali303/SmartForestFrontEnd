@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
 const STORAGE_KEY = 'smart-forest-saved-cameras';
 
@@ -135,7 +136,7 @@ export default function CamerasPage() {
               <th className="px-4 py-3 font-semibold text-slate-700">Kenglik</th>
               <th className="px-4 py-3 font-semibold text-slate-700">Uzunlik</th>
               <th className="px-4 py-3 font-semibold text-slate-700">Oqim URL</th>
-              <th className="px-4 py-3 font-semibold text-slate-700 w-24">Amallar</th>
+              <th className="px-4 py-3 font-semibold text-slate-700 w-28">Amallar</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -155,7 +156,14 @@ export default function CamerasPage() {
                   <td className="px-4 py-3 text-slate-600 truncate max-w-[200px]" title={cam.streamUrl}>
                     {cam.streamUrl}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/cameras/live?stream=${encodeURIComponent(cam.streamUrl)}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      Live
+                    </Link>
                     <button
                       type="button"
                       onClick={() => handleDelete(cam.id)}

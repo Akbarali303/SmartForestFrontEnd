@@ -1,26 +1,62 @@
 'use client';
 
-// Xarita HTML va _next/chunk’lari backendda — iframe to‘g‘ridan-to‘g‘ri backend URL’iga yuklansin,
-// shunda script’lar 404 bermaydi. NEXT_PUBLIC_BACKEND_URL berilmasa: dev da 127.0.0.1:9000, prod da /map/
-const MAP_BACKEND =
-  typeof process.env.NEXT_PUBLIC_BACKEND_URL === 'string' && process.env.NEXT_PUBLIC_BACKEND_URL
-    ? process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')
-    : process.env.NODE_ENV === 'development'
-      ? 'http://127.0.0.1:9000'
-      : '';
-const mapSrc = MAP_BACKEND ? '/api/map-proxy' : '/map/';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import type { MapMode } from '@/components/ForestCreateMap';
+
+const ForestCreateMap = dynamic(() => import('@/components/ForestCreateMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full min-h-[400px] flex items-center justify-center bg-slate-100">
+      <span className="text-slate-500">Xarita yuklanmoqda...</span>
+    </div>
+  ),
+});
+
+const MAP_MODE_LABELS: Record<MapMode, string> = {
+  land_management: 'Yer boshqaruvi',
+  monitoring: 'Monitoring',
+  transport_tracking: 'Transport kuzatuvi',
+};
+
+const VALID_MODES: MapMode[] = ['land_management', 'monitoring', 'transport_tracking'];
 
 export default function DashboardMapPage() {
+  const searchParams = useSearchParams();
+  const modeParam = searchParams.get('mode');
+  const initialMode: MapMode = VALID_MODES.includes(modeParam as MapMode) ? (modeParam as MapMode) : 'land_management';
+  const [mapMode, setMapMode] = useState<MapMode>(initialMode);
+
+  useEffect(() => {
+    if (VALID_MODES.includes(modeParam as MapMode)) {
+      setMapMode(modeParam as MapMode);
+    }
+  }, [modeParam]);
+
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 min-h-0 relative bg-slate-200">
-        <iframe
-          src={mapSrc}
-          title="Smart Forest xaritasi"
-          className="absolute inset-0 w-full h-full border-0"
-          allow="geolocation"
-        />
+    <div className="h-full min-h-0 flex flex-col relative">
+      <div className="absolute top-4 left-4 z-[1000] flex gap-1 p-1 bg-white/95 backdrop-blur rounded-lg border border-slate-200 shadow-md">
+        {(['land_management', 'monitoring', 'transport_tracking'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setMapMode(mode)}
+            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-forest-500/40 ${
+              mapMode === mode
+                ? 'bg-forest-600 text-white shadow'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            {MAP_MODE_LABELS[mode]}
+          </button>
+        ))}
       </div>
+      <ForestCreateMap
+        mapMode={mapMode}
+        drawingMode={false}
+        fillContainer={true}
+      />
     </div>
   );
 }

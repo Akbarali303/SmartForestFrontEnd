@@ -46,6 +46,63 @@ body {
   animation: login-bg-drift-tr-to-bl 25s ease-in-out infinite alternate;
 }
 
+/* Kamera marker (Monitoring xarita) — 9000/map dagi kabi */
+.camera-marker-icon .camera-marker-wrap:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 10px 3px rgba(34, 197, 94, 0.4), 0 0 22px 8px rgba(34, 197, 94, 0.28), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.camera-marker-icon .camera-marker-wrap.camera-marker-active {
+  animation: camera-breathe 5.5s ease-in-out infinite;
+}
+@keyframes camera-breathe {
+  0%, 100% { box-shadow: 0 0 10px 3px rgba(34, 197, 94, 0.5), 0 0 20px 6px rgba(34, 197, 94, 0.3), 0 2px 6px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 14px 4px rgba(34, 197, 94, 0.6), 0 0 28px 10px rgba(34, 197, 94, 0.4), 0 2px 6px rgba(0, 0, 0, 0.35); }
+}
+
+/* Hodisa marker pulsatsiya (blinking) — Monitoring demo events */
+.event-marker-pulse div {
+  animation: event-marker-pulse 1.5s ease-in-out infinite;
+}
+@keyframes event-marker-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  50% { opacity: 0.85; transform: scale(1.15); box-shadow: 0 0 12px 4px rgba(0,0,0,0.25); }
+}
+
+/* Event clustering — xavf ranglari: yashil (past), sariq (o'rta), qizil (yuqori) */
+.event-cluster-icon {
+  background: transparent !important;
+  border: none !important;
+}
+.event-cluster-icon > div {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  line-height: 1;
+}
+.event-cluster-low > div {
+  background-color: #22c55e;
+}
+.event-cluster-medium > div {
+  background-color: #eab308;
+}
+.event-cluster-high > div {
+  background-color: #ef4444;
+}
+
+/* Zoom +/- pastda, Risk Prediction ustida ko‘rinishi uchun */
+.map-zoom-above-legend .leaflet-bottom.leaflet-left {
+  bottom: 11rem;
+}
+
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;

@@ -257,7 +257,7 @@ export default function LoginPage() {
           +998 91 585-55-33
         </a>
         <p className="text-sm text-white/95 drop-shadow-md">FORESTDIGITAL © 2026.</p>
-        <p className="text-xs text-white/80 drop-shadow-md">Designed & Developed By Akbarali</p>
+        <p className="text-xs text-white/80 drop-shadow-md">Akbarali tomonidan yaratilgan</p>
       </footer>
     </div>
   );

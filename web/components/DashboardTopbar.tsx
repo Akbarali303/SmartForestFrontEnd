@@ -1,36 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMonitoringNotifications } from '@/contexts/MonitoringNotificationsContext';
 
-type EventItem = {
-  id: string;
-  title: string;
-  latitude: number;
-  longitude: number;
-  severity: string;
-  createdAt: string;
-};
-
-const SEVERITY_LABEL: Record<string, string> = {
-  critical: 'Kritik',
-  high: 'Yuqori',
-  medium: "O'rta",
-  low: 'Past',
-};
-
-function formatEventTime(iso: string): string {
+function formatNotificationTime(iso: string): string {
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '—';
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return 'Hozir';
-    if (diffMin < 60) return `${diffMin} min oldin`;
-    const diffH = Math.floor(diffMin / 60);
-    if (diffH < 24) return `${diffH} soat oldin`;
-    return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch {
     return '—';
   }
@@ -68,23 +46,15 @@ function displayName(user: string | null): string {
 
 export default function DashboardTopbar() {
   const { user } = useAuth();
+  const { notifications, unreadCount, openEventOnMap } = useMonitoringNotifications();
   const [langOpen, setLangOpen] = useState(false);
   const [lang, setLang] = useState(LANGUAGES[0]);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!notifOpen) return;
-    setEventsLoading(true);
-    fetch('/api/v1/events')
-      .then((r) => r.json())
-      .then((data: EventItem[]) => {
-        setEvents(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setEvents([]))
-      .finally(() => setEventsLoading(false));
-  }, [notifOpen]);
+  const handleNotificationClick = (eventId: string) => {
+    openEventOnMap(eventId);
+    setNotifOpen(false);
+  };
 
   return (
     <header className="h-[var(--topbar-height)] flex items-center justify-end px-6 bg-white border-b border-slate-200 shrink-0">
@@ -123,16 +93,19 @@ export default function DashboardTopbar() {
           <button
             type="button"
             onClick={() => setNotifOpen((o) => !o)}
-            className={`p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition relative ${events.length > 0 ? 'animate-pulse' : ''}`}
-            aria-label="Bildirishnomalar — hodisalar"
+            className={`p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition relative ${unreadCount > 0 ? 'animate-pulse' : ''}`}
+            aria-label="Bildirishnomalar — monitoring hodisalari"
             aria-expanded={notifOpen}
           >
-            <BellIcon className={`w-5 h-5 ${events.length > 0 ? 'text-forest-600' : ''}`} />
-            {events.length > 0 && (
+            <BellIcon className={`w-5 h-5 ${unreadCount > 0 ? 'text-forest-600' : ''}`} />
+            {unreadCount > 0 && (
               <>
                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2" aria-hidden>
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               </>
             )}
@@ -142,35 +115,30 @@ export default function DashboardTopbar() {
               <div className="fixed inset-0 z-10" aria-hidden onClick={() => setNotifOpen(false)} />
               <div className="absolute right-0 top-full mt-1 w-80 max-h-[min(24rem,70vh)] bg-white rounded-xl shadow-lg border border-slate-200 z-20 flex flex-col">
                 <div className="px-4 py-3 border-b border-slate-100">
-                  <h2 className="text-sm font-semibold text-slate-800">Hodisalar</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Barcha aniqlangan hodisalar</p>
+                  <h2 className="text-sm font-semibold text-slate-800">Monitoring hodisalari</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Xaritada ko‘rish uchun bosing</p>
                 </div>
                 <div className="overflow-y-auto flex-1 min-h-0">
-                  {eventsLoading ? (
-                    <div className="p-6 text-center text-sm text-slate-500">Yuklanmoqda...</div>
-                  ) : events.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-slate-500">Hodisalar yo‘q</div>
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-slate-500">Bildirishnomalar yo‘q</div>
                   ) : (
                     <ul className="py-1">
-                      {events.map((e) => (
-                        <li key={e.id} className="px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100 last:border-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{e.title}</p>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <span
-                              className={`inline-flex text-xs font-medium px-1.5 py-0.5 rounded ${
-                                e.severity === 'critical'
-                                  ? 'bg-red-100 text-red-700'
-                                  : e.severity === 'high'
-                                    ? 'bg-amber-100 text-amber-700'
-                                    : e.severity === 'medium'
-                                      ? 'bg-slate-100 text-slate-600'
-                                      : 'bg-slate-50 text-slate-500'
-                              }`}
-                            >
-                              {SEVERITY_LABEL[e.severity] ?? e.severity}
-                            </span>
-                            <span className="text-xs text-slate-400 shrink-0">{formatEventTime(e.createdAt)}</span>
-                          </div>
+                      {notifications.map((n) => (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleNotificationClick(n.id)}
+                            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100 last:border-0 focus:outline-none focus:bg-slate-50"
+                          >
+                            <p className="text-sm font-medium text-slate-800">{n.eventType}</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{n.forestArea}</p>
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <span className="text-xs text-slate-500">{formatNotificationTime(n.time)}</span>
+                              <span className="text-xs text-slate-500 truncate max-w-[10rem]" title={n.assignedInspector}>
+                                {n.assignedInspector}
+                              </span>
+                            </div>
+                          </button>
                         </li>
                       ))}
                     </ul>

@@ -5,24 +5,58 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import SidebarCollapsibleMenu, { type SidebarSubItem } from '@/components/SidebarCollapsibleMenu';
+type MenuItem = {
+  href?: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isLogout?: boolean;
+};
 
-const menuItems = [
-  { href: '/dashboard', label: 'Boshqaruv paneli', icon: DashboardIcon },
-  { href: '/dashboard/map', label: 'Xarita', icon: MapIcon },
-  { href: '/dashboard/forest/create', label: "O'rmon yerlari", icon: ForestLandsIcon, isGroup: true },
-  { href: '/dashboard/forest/enterprises', label: "O'rmon xo'jaliklari", icon: ForestEnterpriseIcon },
-  { href: '/dashboard/monitoring', label: 'Monitoring', icon: MonitoringIcon },
-  { href: '/dashboard/cameras', label: 'Kamerlar', icon: CameraIcon },
-  { href: '/dashboard/analytics', label: 'Tahlil', icon: ChartIcon },
-  { href: '/dashboard/reports', label: 'Hisobotlar', icon: ReportIcon },
-  { href: '/dashboard/settings', label: 'Sozlamalar', icon: SettingsIcon },
-];
+type SidebarSection = {
+  title: string;
+  items: MenuItem[];
+};
 
-const forestSubItems: SidebarSubItem[] = [
-  { href: '/dashboard/forest/create', label: "Hudud qo'shish", icon: AddLandIcon },
-  { href: '/dashboard/forest/rent', label: 'Ijara yerlar', icon: RentIcon },
-  { href: '/dashboard/forest/free', label: "Bo'sh yerlar", icon: FreeLandIcon },
+const SIDEBAR_SECTIONS: SidebarSection[] = [
+  {
+    title: 'ASOSIY',
+    items: [
+      { href: '/dashboard', label: 'Boshqaruv paneli', icon: DashboardIcon },
+      { href: '/dashboard/map', label: 'Xarita', icon: MapIcon },
+    ],
+  },
+  {
+    title: "O'RMON BOSHQARUVI",
+    items: [
+      { href: '/dashboard/forest/create', label: "O'rmon yerlari", icon: ForestLandsIcon },
+      { href: '/dashboard/forest/enterprises', label: "O'rmon xo'jaliklari", icon: ForestEnterpriseIcon },
+    ],
+  },
+  {
+    title: 'MONITORING',
+    items: [
+      { href: '/dashboard/monitoring', label: 'Monitoring', icon: MonitoringIcon },
+      { href: '/dashboard/monitoring/center', label: 'Monitoring markazi', icon: MonitoringIcon },
+      { href: '/dashboard/cameras', label: 'Kamerlar', icon: CameraIcon },
+      { href: '/dashboard/transport', label: 'Transportlar', icon: TransportIcon },
+      { href: '/dashboard/analytics', label: 'Tahlil', icon: ChartIcon },
+    ],
+  },
+  {
+    title: 'HISOBOT',
+    items: [
+      { href: '/dashboard/reports', label: 'Hisobotlar', icon: ReportIcon },
+      { href: '/dashboard/contracts', label: 'Shartnomalar', icon: ContractIcon },
+      { href: '/dashboard/lease-payments', label: "To'lov nazorati", icon: PaymentIcon },
+    ],
+  },
+  {
+    title: 'TIZIM',
+    items: [
+      { href: '/dashboard/settings', label: 'Sozlamalar', icon: SettingsIcon },
+      { label: 'Chiqish', icon: LogoutIcon, isLogout: true },
+    ],
+  },
 ];
 
 function DashboardIcon({ className }: { className?: string }) {
@@ -88,6 +122,13 @@ function CameraIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function TransportIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+    </svg>
+  );
+}
 function ChartIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,6 +140,20 @@ function ReportIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+function ContractIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+function PaymentIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
     </svg>
   );
 }
@@ -169,7 +224,7 @@ export default function DashboardSidebar() {
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           className="p-2 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition"
-          aria-label={collapsed ? 'Yon panelni yoyish' : 'Yon panelni yig‘ish'}
+          aria-label={collapsed ? 'Yon panelni yoyish' : 'Yon panelni yig\'ish'}
         >
           {collapsed ? (
             <ChevronRight className="w-5 h-5" />
@@ -179,49 +234,50 @@ export default function DashboardSidebar() {
         </button>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin">
-        <ul className="space-y-0.5 px-2">
-          {menuItems.map((item) => {
-            if ('isGroup' in item && item.isGroup && item.label === "O'rmon yerlari") {
-              return (
-                <SidebarCollapsibleMenu
-                  key="forest"
-                  label={item.label}
-                  icon={item.icon}
-                  subItems={forestSubItems}
-                  collapsed={collapsed}
-                  defaultOpen={pathname.startsWith('/dashboard/forest')}
-                  collapseAndGoTo="/dashboard"
-                />
-              );
-            }
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${
-                    isActive
-                      ? 'bg-forest-600/20 text-forest-400 border border-forest-500/30'
-                      : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!collapsed && <span className="font-medium truncate">{item.label}</span>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="mt-4 px-2 pt-4 border-t border-slate-700/50">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition"
-          >
-            <LogoutIcon className="w-5 h-5 shrink-0" />
-            {!collapsed && <span className="font-medium">Chiqish</span>}
-          </button>
-        </div>
+        {SIDEBAR_SECTIONS.map((section, idx) => (
+          <div key={section.title} className={`${idx > 0 ? 'mt-4 pt-4 border-t border-slate-700/50 ' : ''}mb-5 last:mb-0`}>
+            {!collapsed && (
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                {section.title}
+              </p>
+            )}
+            <ul className="space-y-0.5 px-2">
+              {section.items.map((item) => {
+                if (item.isLogout) {
+                  return (
+                    <li key="logout">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition"
+                      >
+                        <item.icon className="w-5 h-5 shrink-0" />
+                        {!collapsed && <span className="font-medium truncate">{item.label}</span>}
+                      </button>
+                    </li>
+                  );
+                }
+                const href = item.href!;
+                const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition ${
+                        isActive
+                          ? 'bg-forest-600/20 text-forest-400 border border-forest-500/30'
+                          : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+                      }`}
+                    >
+                      <item.icon className="w-5 h-5 shrink-0" />
+                      {!collapsed && <span className="font-medium truncate">{item.label}</span>}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
       <footer className="shrink-0 px-4 py-5 border-t border-slate-700/50 text-center">
         {!collapsed ? (
@@ -231,7 +287,7 @@ export default function DashboardSidebar() {
               +998 91 585-55-33
             </a>
             <p className="text-slate-500 text-xs">FORESTDIGITAL © 2026.</p>
-            <p className="text-slate-500 text-xs mt-1">Designed & Developed By Akbarali</p>
+            <p className="text-slate-500 text-xs mt-1">Akbarali tomonidan yaratilgan</p>
           </>
         ) : (
           <a href="tel:+998915855533" className="flex items-center justify-center text-forest-400 hover:text-forest-300 transition" aria-label="+998 91 585-55-33">
