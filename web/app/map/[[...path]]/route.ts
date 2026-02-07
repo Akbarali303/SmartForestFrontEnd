@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:9000';
+const BACKEND =
+  process.env.FRONTEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.BACKEND_URL ||
+  (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:9000');
 
 const ERROR_HTML = `
 <!DOCTYPE html>
@@ -33,6 +37,9 @@ export async function GET(
     const path = params?.path;
     const pathSegments = path?.length ? path.join('/') : '';
     const backendPath = pathSegments ? `/map/${pathSegments}` : '/map/';
+    if (!BACKEND) {
+      return error503();
+    }
     const url = `${BACKEND.replace(/\/$/, '')}${backendPath}`;
 
     const res = await fetch(url, {

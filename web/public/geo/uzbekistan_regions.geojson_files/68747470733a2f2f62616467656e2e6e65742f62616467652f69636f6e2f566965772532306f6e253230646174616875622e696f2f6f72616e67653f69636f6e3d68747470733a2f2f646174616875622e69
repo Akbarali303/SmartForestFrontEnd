@@ -1,0 +1,16 @@
+<svg width="147.625" height="25" viewBox="0 0 1181 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="View on datahub.io">
+  <title>View on datahub.io</title>
+  <linearGradient id="EYfKH" x2="0" y2="100%">
+    <stop offset="0" stop-opacity=".1" stop-color="#EEE"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="OFSDl"><rect width="1181" height="200" rx="30" fill="#FFF"/></mask>
+  <g mask="url(#OFSDl)">
+    <rect width="1181" height="200" fill="#F73" x="0"/>
+    <rect width="1181" height="200" fill="url(#EYfKH)"/>
+  </g>
+  <g aria-hidden="true" fill="#fff" text-anchor="start" font-family="Verdana,DejaVu Sans,sans-serif" font-size="110">
+    <text x="65" y="148" textLength="1066" fill="#000" opacity="0.25">View on datahub.io</text>
+    <text x="55" y="138" textLength="1066">View on datahub.io</text>
+  </g>
+</svg>

@@ -21,7 +21,7 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
     frameguard: false,
   };
-  // Xarita iframe (localhost:9002) uchun — X-Frame-Options hech qachon yuborilmasin
+  // Xarita iframe uchun — X-Frame-Options hech qachon yuborilmasin (frontend iframe ichida ochiladi)
   const stripXFrameOptions = (res: Response) => {
     res.removeHeader('X-Frame-Options');
     const origSet = res.setHeader.bind(res);
@@ -48,7 +48,11 @@ async function bootstrap() {
     next();
   });
   app.use(helmet(helmetOptions));
-  app.enableCors({ origin: true, credentials: true });
+  const corsOrigin = process.env.CORS_ORIGIN;
+  app.enableCors({
+    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : true,
+    credentials: true,
+  });
   app.useWebSocketAdapter(new IoAdapter(app));
   app.useStaticAssets(join(process.cwd(), 'map'), { prefix: '/map' });
   app.useStaticAssets(join(process.cwd(), 'public'), { prefix: '/public' });
@@ -64,8 +68,10 @@ async function bootstrap() {
     exclude: [{ path: '/', method: RequestMethod.GET }],
   });
   const port = process.env.PORT ?? 9000;
-  await app.listen(port);
-  console.log(`API: http://localhost:${port}/api/v1`);
-  console.log(`Map: http://localhost:${port}/map/`);
+  const host = process.env.HOST ?? '0.0.0.0';
+  await app.listen(port, host);
+  const baseUrl = process.env.PUBLIC_URL || `http://${host}:${port}`;
+  console.log(`API: ${baseUrl}/api/v1`);
+  console.log(`Map: ${baseUrl}/map/`);
 }
 bootstrap();

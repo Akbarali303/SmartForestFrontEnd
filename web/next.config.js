@@ -1,7 +1,17 @@
 /** @type {import('next').NextConfig} */
-// 127.0.0.1 ishlatiladi — ba'zi muhitlarda localhost 500 sabab bo‘ladi
 const path = require('path');
-const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:9000';
+// FRONTEND_API_URL / NEXT_PUBLIC_API_URL / BACKEND_URL — production da majburiy
+const backendUrl =
+  process.env.FRONTEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.BACKEND_URL ||
+  (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:9000');
+
+if (process.env.NODE_ENV === 'production' && !backendUrl) {
+  throw new Error(
+    'Production requires FRONTEND_API_URL or NEXT_PUBLIC_API_URL or BACKEND_URL (e.g. http://SERVER_IP:9000)'
+  );
+}
 
 // Leaflet mutlaq yo‘li — custom server root’dan ishlaganda ham topilsin
 const webDir = __dirname;

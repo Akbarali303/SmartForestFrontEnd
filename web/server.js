@@ -1,9 +1,14 @@
 /**
  * Custom server: /socket.io ni backend ga proxy qiladi (HTTP + WebSocket).
- * CWD avval o‘rnatiladi — Next.js va webpack web/ dan ishlashi uchun.
+ * CWD avval o'rnatiladi — Next.js va webpack web/ dan ishlashi uchun.
  */
 const path = require('path');
 process.chdir(path.join(__dirname));
+
+// Load .env for FRONTEND_API_URL, NEXT_PUBLIC_API_URL, etc. (required in production)
+try {
+  require('dotenv').config({ path: path.join(__dirname, '.env') });
+} catch (_) {}
 
 const http = require('http');
 const { parse } = require('url');
@@ -12,7 +17,16 @@ const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
 const port = parseInt(process.env.PORT || '9002', 10);
-const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:9000';
+const backendUrl =
+  process.env.FRONTEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.BACKEND_URL ||
+  (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:9000');
+
+if (process.env.NODE_ENV === 'production' && !backendUrl) {
+  console.error('Production requires FRONTEND_API_URL or NEXT_PUBLIC_API_URL or BACKEND_URL');
+  process.exit(1);
+}
 
 const proxy = httpProxy.createProxyServer({ ws: true });
 
@@ -60,9 +74,11 @@ app.prepare().then(() => {
     socket.destroy();
   });
 
-  server.listen(port, (err) => {
+  const host = process.env.HOST || '0.0.0.0';
+  server.listen(port, host, (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://localhost:${port}`);
+    const baseUrl = process.env.PUBLIC_URL || `http://${host}:${port}`;
+    console.log(`> Ready on ${baseUrl}`);
     console.log(`> socket.io -> ${backendUrl}`);
   });
 }).catch((err) => {

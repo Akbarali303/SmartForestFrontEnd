@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND =
+  process.env.FRONTEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'http://127.0.0.1:9000';
-const MAP_URL = `${BACKEND.replace(/\/$/, '')}/map/`;
+  (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:9000');
+const MAP_URL = BACKEND ? `${BACKEND.replace(/\/$/, '')}/map/` : '';
 
 /**
  * Xarita HTML ni proxy qiladi — X-Frame-Options bo‘lmasa iframe ichida ochiladi.
@@ -12,6 +14,9 @@ const MAP_URL = `${BACKEND.replace(/\/$/, '')}/map/`;
  */
 export async function GET(request: NextRequest) {
   try {
+    if (!MAP_URL) {
+      return new NextResponse('Backend URL not configured', { status: 503 });
+    }
     const res = await fetch(MAP_URL, {
       headers: { Accept: 'text/html' },
       cache: 'no-store',
